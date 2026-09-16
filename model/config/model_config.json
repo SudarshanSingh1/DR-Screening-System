@@ -1,0 +1,56 @@
+{
+    "model_name": "diabetic_retinopathy_efficientnetb0",
+    "architecture": "EfficientNetB0",
+    "input_size": [
+        224,
+        224,
+        3
+    ],
+    "num_classes": 5,
+    "class_names": {
+        "0": "No DR",
+        "1": "Mild",
+        "2": "Moderate",
+        "3": "Severe",
+        "4": "Proliferative DR"
+    },
+    "referable_dr": {
+        "definition": "Moderate + Severe + Proliferative DR",
+        "non_referable_classes": [
+            0,
+            1
+        ],
+        "referable_classes": [
+            2,
+            3,
+            4
+        ],
+        "optimized_threshold": 0.20798,
+        "default_threshold": 0.5,
+        "legacy_threshold": 0.440134
+    },
+    "uncertainty_handling": {
+        "provisional_confidence_threshold": 0.5,
+        "note": "Provisional threshold. If max individual class probability is below this, flag as LOW CONFIDENCE."
+    },
+    "fine_tuning": {
+        "total_efficientnet_layers": 238,
+        "trainable_layers": 30,
+        "frozen_layers": 208,
+        "learning_rate": 1e-05
+    },
+    "preprocessing": {
+        "pixel_range": [
+            0.0,
+            255.0
+        ],
+        "dtype": "float32",
+        "resize_method": "bilinear",
+        "color_mode": "rgb",
+        "note": "Preprocessing updated for native V2 dlnetwork which embeds its own zscore layer. Pass uint8 [0, 255] equivalents."
+    },
+    "original_model_file": "best_correct_fine_tuned_dr_model.keras",
+    "original_training_environment": "Kaggle",
+    "active_model_path": "model/weights/active/DR_EfficientNetB0_V2.mat",
+    "model_type": "native_dlnetwork"
+}

@@ -1,0 +1,42 @@
+# Node
+node_modules/
+dist/
+build/
+.next/
+coverage/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs & Temp
+*.log
+scratch/
+
+# Environment Variables
+.env
+.env.*.local
+.env.local
+.env.development
+.env.test
+.env.production
+!.env.example
+backend/.env
+frontend/.env
+
+# MATLAB
+slprj/
+*.asv
+*.slxc
+# Intentionally NOT ignoring *.mat as DR_EfficientNetB0_V2.mat is the canonical model
+
+# Docker
+.docker/

@@ -1,0 +1,303 @@
+{
+  "model_path": "/Users/sudarshankumar/Documents/DR-Screening-System/model/production/V2/DR_EfficientNetB0_V2.keras",
+  "test_timestamp": "2026-09-13T05:58:57Z",
+  "checks": {
+    "normalization_equivalence": "PASS",
+    "model_load": "PASS",
+    "load_time_s": 0.48,
+    "layer_count": 240,
+    "per_image_inference": "PASS",
+    "gradcam": "PASS",
+    "gradcam_shape": [
+      224,
+      224
+    ],
+    "gradcam_has_activation": true,
+    "prediction_diversity": "PASS"
+  },
+  "per_image": [
+    {
+      "file": "Level0/000c1434d8d7.png",
+      "level": "Level0",
+      "status": "PASS",
+      "classIndex": 2,
+      "probabilities": [
+        0.0040231142193078995,
+        0.019815491512417793,
+        0.9372782111167908,
+        0.004038665443658829,
+        0.0348445400595665
+      ],
+      "confidence": 0.9372782111167908,
+      "refProb": 0.9761614166200161,
+      "isReferable": true,
+      "isLowConfidence": false,
+      "probSum": 1.0000000223517418
+    },
+    {
+      "file": "Level0/0083ee8054ee.png",
+      "level": "Level0",
+      "status": "PASS",
+      "classIndex": 2,
+      "probabilities": [
+        0.05690544843673706,
+        0.022816142067313194,
+        0.5841514468193054,
+        0.013852051459252834,
+        0.32227495312690735
+      ],
+      "confidence": 0.5841514468193054,
+      "refProb": 0.9202784514054656,
+      "isReferable": true,
+      "isLowConfidence": false,
+      "probSum": 1.0000000419095159
+    },
+    {
+      "file": "Level0/0097f532ac9f.png",
+      "level": "Level0",
+      "status": "PASS",
+      "classIndex": 0,
+      "probabilities": [
+        0.9874166250228882,
+        0.005377850495278835,
+        0.004414535127580166,
+        0.0008888050215318799,
+        0.001902069547213614
+      ],
+      "confidence": 0.9874166250228882,
+      "refProb": 0.00720540969632566,
+      "isReferable": false,
+      "isLowConfidence": false,
+      "probSum": 0.9999998852144927
+    },
+    {
+      "file": "Level1/7f39c36469b5.png",
+      "level": "Level1",
+      "status": "PASS",
+      "classIndex": 0,
+      "probabilities": [
+        0.7651234269142151,
+        0.11699449270963669,
+        0.043717965483665466,
+        0.028381096199154854,
+        0.045783061534166336
+      ],
+      "confidence": 0.7651234269142151,
+      "refProb": 0.11788212321698666,
+      "isReferable": false,
+      "isLowConfidence": false,
+      "probSum": 1.0000000428408384
+    },
+    {
+      "file": "Level1/7f43becd3e83.png",
+      "level": "Level1",
+      "status": "PASS",
+      "classIndex": 0,
+      "probabilities": [
+        0.9834242463111877,
+        0.005294031463563442,
+        0.004007333889603615,
+        0.003601089585572481,
+        0.0036732845474034548
+      ],
+      "confidence": 0.9834242463111877,
+      "refProb": 0.01128170802257955,
+      "isReferable": false,
+      "isLowConfidence": false,
+      "probSum": 0.9999999857973307
+    },
+    {
+      "file": "Level1/7f60f2a083d3.png",
+      "level": "Level1",
+      "status": "PASS",
+      "classIndex": 2,
+      "probabilities": [
+        0.08601588010787964,
+        0.039883993566036224,
+        0.5077114105224609,
+        0.12629924714565277,
+        0.2400895357131958
+      ],
+      "confidence": 0.5077114105224609,
+      "refProb": 0.8741001933813095,
+      "isReferable": true,
+      "isLowConfidence": false,
+      "probSum": 1.0000000670552254
+    },
+    {
+      "file": "Level2/99132193eaa0.png",
+      "level": "Level2",
+      "status": "PASS",
+      "classIndex": 1,
+      "probabilities": [
+        0.012890450656414032,
+        0.7482905387878418,
+        0.21110056340694427,
+        0.001132446457631886,
+        0.026585936546325684
+      ],
+      "confidence": 0.7482905387878418,
+      "refProb": 0.23881894641090184,
+      "isReferable": true,
+      "isLowConfidence": false,
+      "probSum": 0.9999999358551577
+    },
+    {
+      "file": "Level2/991a0b7a8c87.png",
+      "level": "Level2",
+      "status": "PASS",
+      "classIndex": 0,
+      "probabilities": [
+        0.9947506785392761,
+        0.0029531926847994328,
+        0.000783800904173404,
+        0.0005938596441410482,
+        0.0009184155496768653
+      ],
+      "confidence": 0.9947506785392761,
+      "refProb": 0.0022960760979913175,
+      "isReferable": false,
+      "isLowConfidence": false,
+      "probSum": 0.9999999473220669
+    },
+    {
+      "file": "Level2/99240ee00485.png",
+      "level": "Level2",
+      "status": "PASS",
+      "classIndex": 0,
+      "probabilities": [
+        0.8858659267425537,
+        0.05638548731803894,
+        0.030690856277942657,
+        0.003130441764369607,
+        0.023927338421344757
+      ],
+      "confidence": 0.8858659267425537,
+      "refProb": 0.05774863646365702,
+      "isReferable": false,
+      "isLowConfidence": false,
+      "probSum": 1.0000000505242497
+    },
+    {
+      "file": "Level3/dcc6c0ad5cad.png",
+      "level": "Level3",
+      "status": "PASS",
+      "classIndex": 0,
+      "probabilities": [
+        0.8458679914474487,
+        0.1369595229625702,
+        0.0107960170134902,
+        0.0003772563359234482,
+        0.0059992000460624695
+      ],
+      "confidence": 0.8458679914474487,
+      "refProb": 0.017172473395476118,
+      "isReferable": false,
+      "isLowConfidence": false,
+      "probSum": 0.999999987805495
+    },
+    {
+      "file": "Level3/dccdf750c962.png",
+      "level": "Level3",
+      "status": "PASS",
+      "classIndex": 0,
+      "probabilities": [
+        0.8435402512550354,
+        0.11279069632291794,
+        0.017216011881828308,
+        0.013570895418524742,
+        0.012882154434919357
+      ],
+      "confidence": 0.8435402512550354,
+      "refProb": 0.04366906173527241,
+      "isReferable": false,
+      "isLowConfidence": false,
+      "probSum": 1.0000000093132257
+    },
+    {
+      "file": "Level3/dce73d90c00c.png",
+      "level": "Level3",
+      "status": "PASS",
+      "classIndex": 0,
+      "probabilities": [
+        0.6794073581695557,
+        0.2159048318862915,
+        0.03828058019280434,
+        0.016332123428583145,
+        0.05007512494921684
+      ],
+      "confidence": 0.6794073581695557,
+      "refProb": 0.10468782857060432,
+      "isReferable": false,
+      "isLowConfidence": false,
+      "probSum": 1.0000000186264515
+    },
+    {
+      "file": "Level4/e9f3c85a2a02.png",
+      "level": "Level4",
+      "status": "PASS",
+      "classIndex": 0,
+      "probabilities": [
+        0.996446430683136,
+        0.0019590668380260468,
+        0.0005812103627249599,
+        0.0004455429734662175,
+        0.0005677466397173703
+      ],
+      "confidence": 0.996446430683136,
+      "refProb": 0.0015944999759085476,
+      "isReferable": false,
+      "isLowConfidence": false,
+      "probSum": 0.9999999974970706
+    },
+    {
+      "file": "Level4/e9f82b5bbaf4.png",
+      "level": "Level4",
+      "status": "PASS",
+      "classIndex": 2,
+      "probabilities": [
+        0.010022728703916073,
+        0.023072952404618263,
+        0.8664772510528564,
+        0.023711731657385826,
+        0.07671526074409485
+      ],
+      "confidence": 0.8664772510528564,
+      "refProb": 0.9669042434543371,
+      "isReferable": true,
+      "isLowConfidence": false,
+      "probSum": 0.9999999245628715
+    },
+    {
+      "file": "Level4/e9faf0296643.png",
+      "level": "Level4",
+      "status": "PASS",
+      "classIndex": 0,
+      "probabilities": [
+        0.9801371693611145,
+        0.006265406496822834,
+        0.006415923126041889,
+        0.0022728140465915203,
+        0.004908798728138208
+      ],
+      "confidence": 0.9801371693611145,
+      "refProb": 0.013597535900771618,
+      "isReferable": false,
+      "isLowConfidence": false,
+      "probSum": 1.000000111758709
+    }
+  ],
+  "summary": {
+    "passed": [
+      "normalization_equivalence",
+      "model_load",
+      "per_image_inference",
+      "gradcam",
+      "prediction_diversity"
+    ],
+    "failed": [],
+    "warned": [],
+    "total_images": 15,
+    "matlab_comparison": "NOT_AVAILABLE \u2014 MATLAB is not running. Normalization equivalence verified mathematically. Numerical prediction comparison requires a running MATLAB R2023b instance."
+  }
+}

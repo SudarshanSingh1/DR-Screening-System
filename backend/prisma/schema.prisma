@@ -1,0 +1,492 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  PATIENT
+  SCREENING_STAFF
+  DOCTOR
+  ENGINEER_ADMIN
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+}
+
+enum CredentialType {
+  PASSWORD
+  PHONE_OTP
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  LOGIN
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+  ACCOUNT_ACTIVATION
+}
+
+enum IdentityProvider {
+  DIGILOCKER
+  MERI_PEHCHAAN
+  AADHAAR
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  FAILED
+  CANCELLED
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id            String     @id @default(cuid())
+  firstName     String?    // Deprecated: Migrating to domain profiles
+  lastName      String?    // Deprecated: Migrating to domain profiles
+  email         String?    @unique
+  emailVerified Boolean    @default(false)
+  pendingEmail  String?
+  phone         String?    @unique
+  role          Role
+  status        UserStatus @default(PENDING_VERIFICATION)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  credential            UserCredential?
+  otpChallenges         OtpChallenge[]
+  passwordResetTokens   PasswordResetToken[]
+  activationTokens      AccountActivationToken[]
+  identityVerifications IdentityVerification[]
+  auditLogs             AuditLog[]
+  patientFeedbacks      PatientFeedback[]  @relation("PatientFeedbacks")
+  platformFeedbacks     PlatformFeedback[] @relation("PlatformFeedbacks")
+  
+  patientProfile        Patient?        @relation("PatientUser")
+  staffProfile          StaffProfile?   @relation("StaffUser")
+  doctorProfile         DoctorProfile?  @relation("DoctorUser")
+  createdPatients       Patient[]       @relation("PatientCreator")
+  initiatedScreenings   Screening[]     @relation("StaffScreenings")
+  clinicalReviews       ClinicalReview[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+model UserCredential {
+  id             String         @id @default(cuid())
+  userId         String         @unique
+  credentialType CredentialType
+  // bcrypt hash stored server-side only — never returned to frontend
+  passwordHash   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OtpChallenge {
+  id         String     @id @default(cuid())
+  phone      String?
+  email      String?
+  purpose    OtpPurpose
+  // bcrypt hash of the OTP — raw OTP never persisted
+  otpHash    String
+  expiresAt  DateTime
+  attempts   Int        @default(0)
+  consumedAt DateTime?
+  userId     String?
+  createdAt  DateTime   @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([phone, purpose])
+  @@index([email, purpose])
+}
+
+model AccountActivationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  // bcrypt hash of the raw token sent to user — raw token never persisted
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model IdentityVerification {
+  id                String             @id @default(cuid())
+  userId            String
+  provider          IdentityProvider
+  status            VerificationStatus @default(PENDING)
+  // Opaque reference from provider — never raw Aadhaar/document number
+  externalReference String?
+  verifiedAt        DateTime?
+  createdAt         DateTime           @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, provider])
+}
+
+model OAuthState {
+  id         String           @id @default(cuid())
+  provider   IdentityProvider
+  // cryptographically secure random string sent in the OAuth 'state' parameter
+  stateHash  String           @unique
+  // If the user is logged in and initiating verification, bind it to them
+  userId     String?
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime         @default(now())
+
+  @@index([stateHash])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  event     String // e.g. "OTP_SENT", "LOGIN_SUCCESS", "LOGIN_FAILED"
+  ipAddress String?
+  userAgent String?
+  metadata  Json? // non-PII structured context
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([event])
+  @@index([createdAt])
+}
+
+model session {
+  sid    String   @id @db.VarChar
+  sess   Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "IDX_session_expire")
+}
+
+// ─── Feedback Systems ────────────────────────────────────────────────────────
+
+enum PatientFeedbackCategory {
+  SCREENING_EXPERIENCE
+  STAFF_BEHAVIOR
+  HOSPITAL_EXPERIENCE
+  PLATFORM_EXPERIENCE
+  SUGGESTION
+  COMPLAINT
+  OTHER
+}
+
+enum PatientFeedbackStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  RESOLVED
+}
+
+enum PlatformFeedbackCategory {
+  BUG_REPORT
+  UI_UX
+  PERFORMANCE
+  WORKFLOW
+  AI_RESULT
+  IMAGE_UPLOAD
+  FEATURE_REQUEST
+  GENERAL_SUGGESTION
+  OTHER
+}
+
+enum PlatformFeedbackStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  RESOLVED
+}
+
+enum AttachmentType {
+  IMAGE
+  VOICE
+}
+
+model PatientFeedback {
+  id        String                  @id @default(cuid())
+  patientId String
+  category  PatientFeedbackCategory
+  status    PatientFeedbackStatus   @default(SUBMITTED)
+  text      String?                 @db.Text
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+
+  patient     User                        @relation("PatientFeedbacks", fields: [patientId], references: [id], onDelete: Cascade)
+  attachments PatientFeedbackAttachment[]
+
+  @@index([patientId])
+}
+
+model PatientFeedbackAttachment {
+  id         String          @id @default(cuid())
+  feedbackId String
+  type       AttachmentType
+  fileKey    String
+  mimeType   String
+  sizeBytes  Int
+  createdAt  DateTime        @default(now())
+
+  feedback PatientFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId])
+}
+
+model PlatformFeedback {
+  id                String                   @id @default(cuid())
+  submittedByUserId String
+  category          PlatformFeedbackCategory
+  status            PlatformFeedbackStatus   @default(SUBMITTED)
+  text              String                   @db.Text
+  screeningId       String?
+  caseReferenceId   String?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  submitter   User                         @relation("PlatformFeedbacks", fields: [submittedByUserId], references: [id], onDelete: Cascade)
+  attachments PlatformFeedbackAttachment[]
+
+  @@index([submittedByUserId])
+}
+
+model PlatformFeedbackAttachment {
+  id         String          @id @default(cuid())
+  feedbackId String
+  type       AttachmentType
+  fileKey    String
+  mimeType   String
+  sizeBytes  Int
+  createdAt  DateTime        @default(now())
+
+  feedback PlatformFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId])
+}
+
+model Patient {
+  id                String   @id @default(cuid())
+  userId            String?  @unique
+  
+  firstName         String
+  middleName        String?
+  lastName          String?
+  preferredName     String?
+  age               Int?
+  gender            String?
+  phone             String?
+  email             String?
+  emailVerified     Boolean  @default(false)
+  pendingEmail      String?
+  aadhaarReference  String?  // Reference, not raw
+  avatarColor       String?
+  preferredLanguage String?
+  
+  createdByStaffId  String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  user              User?    @relation("PatientUser", fields: [userId], references: [id], onDelete: SetNull)
+  creator           User?    @relation("PatientCreator", fields: [createdByStaffId], references: [id], onDelete: SetNull)
+  screenings        Screening[]
+
+}
+
+
+model Facility {
+  id        String   @id @default(cuid())
+  name      String
+  location  String?
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  doctors   DoctorProfile[]
+  staff     StaffProfile[]
+}
+
+model StaffProfile {
+
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  
+  professionalName String
+  designation      String?
+  facilityId       String?
+  facility         Facility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  employmentStatus String  @default("ACTIVE")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation("StaffUser", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DoctorProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  
+  professionalName String
+  specialty        String?
+  facilityId       String?
+  facility         Facility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  registrationNumber String?
+  authorizationStatus String @default("AUTHORIZED")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation("DoctorUser", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Screening System ────────────────────────────────────────────────────────
+
+enum ScreeningStatus {
+  CREATED
+  READY_FOR_UPLOAD
+  UPLOADING
+  IMAGES_UPLOADED
+  READY_FOR_PROCESSING
+  PROCESSING
+  PENDING_REVIEW
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ImageEye {
+  LEFT
+  RIGHT
+}
+
+enum ImageStatus {
+  PENDING
+  UPLOADING
+  AVAILABLE
+  INVALID
+  FAILED
+}
+
+enum DoctorDecision {
+  DR_DETECTED
+  NO_DR_DETECTED
+}
+
+model Screening {
+  id                 String           @id @default(cuid())
+  patientId          String
+  // Follows repository convention: points to User.id (same as Patient.createdByStaffId)
+  initiatingStaffId  String?
+  status             ScreeningStatus  @default(CREATED)
+  
+  // Snapshots exactly what the AI returned, used for reports without rerunning AI.
+  aiResult           Json?
+
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  // If a Patient record is deleted, prevent accidental cascade deletion of medical records.
+  patient            Patient          @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  
+  // If Staff auth account is removed, keep the medical record but nullify creator.
+  initiatingStaff    User?            @relation("StaffScreenings", fields: [initiatingStaffId], references: [id], onDelete: SetNull)
+  
+  images             ScreeningImage[]
+  clinicalReview     ClinicalReview?
+  clinicalReport     ClinicalReport?
+
+  @@index([patientId])
+  @@index([initiatingStaffId])
+  @@index([status])
+}
+
+model ClinicalReview {
+  id             String         @id @default(cuid())
+  screeningId    String         @unique
+  reviewerId     String
+  doctorDecision DoctorDecision
+  clinicalNotes  String?        @db.Text
+  reviewedAt     DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  screening      Screening      @relation(fields: [screeningId], references: [id], onDelete: Cascade)
+  reviewer       User           @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
+  clinicalReport ClinicalReport?
+
+  @@index([reviewerId])
+}
+
+model ClinicalReport {
+  id             String         @id @default(cuid())
+  screeningId    String         @unique
+  reviewId       String         @unique
+  storageKey     String         
+  generatedAt    DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  screening      Screening      @relation(fields: [screeningId], references: [id], onDelete: Cascade)
+  review         ClinicalReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+}
+
+model ScreeningImage {
+  id              String       @id @default(cuid())
+  screeningId     String
+  eye             ImageEye
+  captureSequence Int          @default(1)
+  status          ImageStatus  @default(PENDING)
+  
+  originalName    String?
+  mimeType        String?
+  sizeBytes       Int?
+  
+  // Future storage reference (nullable placeholder)
+  storageKey      String?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // If a Screening is deliberately deleted, its images go with it.
+  screening       Screening    @relation(fields: [screeningId], references: [id], onDelete: Cascade)
+
+  @@index([screeningId])
+  @@index([screeningId, eye])
+  // Ensure explicit ordering per eye and prevent duplicates
+  @@unique([screeningId, eye, captureSequence])
+}

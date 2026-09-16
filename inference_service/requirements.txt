@@ -1,0 +1,14 @@
+# Vision AI — Python Inference Service Requirements
+# Production dependencies for DR_EfficientNetB0_V2.keras inference
+
+fastapi>=0.111.0
+uvicorn>=0.29.0
+python-multipart>=0.0.9
+Pillow>=10.0.0
+numpy>=1.24.0
+tensorflow>=2.13.0
+h5py>=3.9.0
+matplotlib>=3.7.0
+
+# Future MATLAB provider support (not required for production inference):
+# matlabengine  — install only when ACTIVE_PROVIDER=matlab_v2

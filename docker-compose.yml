@@ -1,0 +1,73 @@
+services:
+  database:
+    image: postgres:16-alpine
+    container_name: visionai_db
+    env_file:
+      - ./backend/.env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-visionai} -d ${POSTGRES_DB:-visionai_auth}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  inference:
+    # Pure Python ML container — no MATLAB required for production inference.
+    # MATLAB files are retained in the repository as a reference implementation.
+    build:
+      context: .
+      dockerfile: inference_service/Dockerfile
+    image: visionai-inference:latest
+    container_name: visionai_inference
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ACTIVE_PROVIDER=python_v2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
+      interval: 15s
+      timeout: 10s
+      retries: 6
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: visionai-backend:latest
+    container_name: visionai_backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/.env
+    environment:
+      - INFERENCE_SERVICE_URL=http://inference:8000
+      - INFERENCE_TIMEOUT_MS=60000
+    depends_on:
+      database:
+        condition: service_healthy
+      inference:
+        condition: service_started
+    restart: unless-stopped
+    command: >
+      sh -c "npx prisma migrate deploy && npm start"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: dr-screening-frontend:latest
+    container_name: dr_screening_frontend
+    ports:
+      - "3000:80"
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
