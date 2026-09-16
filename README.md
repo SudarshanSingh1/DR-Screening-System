@@ -461,20 +461,48 @@ Never commit `.env` to version control. It is listed in `.gitignore`.
 
 ---
 
-## Team
+<div align="center">
 
-**Team Viltrumites**
+## Team Viltrumites
 
-Smart India Hackathon 2026 — Problem Statement: SIH26038
+<p style="color: #888;">Smart India Hackathon 2026 &mdash; Problem Statement: SIH26038</p>
 
-| Name | Role |
-|---|---|
-| **Akshay Kumar Verma** | Team Leader |
-| **Anshu Kumar** | Team Member |
-| **Aditi Gargi** | Team Member |
-| **Sudarshan Kumar** | Team Member |
-| **Krishna Kumar** | Team Member |
-| **Aditya Singh** | Team Member |
+<table width="60%" style="border-collapse: collapse; text-align: left;">
+  <thead>
+    <tr style="background-color: rgba(255, 255, 255, 0.05);">
+      <th style="padding: 12px; border-bottom: 1px solid #444;">Name</th>
+      <th style="padding: 12px; border-bottom: 1px solid #444;">Role</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding: 12px; border-bottom: 1px solid #333;"><b>Akshay Kumar Verma</b></td>
+      <td style="padding: 12px; border-bottom: 1px solid #333;">Team Leader</td>
+    </tr>
+    <tr>
+      <td style="padding: 12px; border-bottom: 1px solid #333;"><b>Anshu Kumar</b></td>
+      <td style="padding: 12px; border-bottom: 1px solid #333;">Team Member</td>
+    </tr>
+    <tr>
+      <td style="padding: 12px; border-bottom: 1px solid #333;"><b>Aditi Gargi</b></td>
+      <td style="padding: 12px; border-bottom: 1px solid #333;">Team Member</td>
+    </tr>
+    <tr>
+      <td style="padding: 12px; border-bottom: 1px solid #333;"><b>Sudarshan Kumar</b></td>
+      <td style="padding: 12px; border-bottom: 1px solid #333;">Team Member</td>
+    </tr>
+    <tr>
+      <td style="padding: 12px; border-bottom: 1px solid #333;"><b>Krishna Kumar</b></td>
+      <td style="padding: 12px; border-bottom: 1px solid #333;">Team Member</td>
+    </tr>
+    <tr>
+      <td style="padding: 12px;"><b>Aditya Singh</b></td>
+      <td style="padding: 12px;">Team Member</td>
+    </tr>
+  </tbody>
+</table>
+
+</div>
 
 ---
 
