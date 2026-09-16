@@ -40,3 +40,4 @@ slprj/
 
 # Docker
 .docker/
+patch_images.py

@@ -130,6 +130,13 @@ flowchart TD
     D --> C[Clinical Report Generator]
 ```
 
+<br />
+<div align="center">
+<img src="frontend/src/assets/system%20design.jpeg" alt="System Design" width="90%" style="border-radius: 8px;" />
+<br /><sub>Detailed system design and component interaction flow.</sub>
+</div>
+
+
 ---
 
 ## AI Model
@@ -377,9 +384,13 @@ A distinct MATLAB/Simulink component supports the broader rural deployment strat
 <br />
 
 <div align="center">
-<img src="frontend/src/assets/simulation-1.jpeg" width="45%" style="border-radius: 8px; margin-right: 5px;" />
-<img src="frontend/src/assets/simulation-2.jpeg" width="45%" style="border-radius: 8px;" />
-<br /><sub>Analyzing resource constraints and deployment strategies across rural contexts.</sub>
+<img src="frontend/src/assets/simulation-2.jpeg" width="45%" style="border-radius: 8px; margin-right: 5px;" />
+<img src="frontend/src/assets/STARTING%20AUTOMATED%20BOTTLENECK%20TEST%20SUITE.jpeg" width="45%" style="border-radius: 8px;" />
+<br />
+<br />
+<img src="frontend/src/assets/Throughput%20Metrics.jpeg" width="45%" style="border-radius: 8px; margin-right: 5px;" />
+<img src="frontend/src/assets/STARTING%20AUTOMATED%20BOTTLENECK%20TEST%20SUITE2.jpeg" width="45%" style="border-radius: 8px;" />
+<br /><sub>Automated bottleneck test suite, throughput metrics, and resource constraint analysis via Simulink.</sub>
 </div>
 
 ---
@@ -470,5 +481,6 @@ Smart India Hackathon 2026 — Problem Statement: SIH26038
 <div align="center">
 
 Built for Smart India Hackathon 2026 (SIH26038)
-
+<br /><br />
+<img src="frontend/src/assets/MakeInIndia.jpeg" width="120" alt="Make in India" />
 </div>
