@@ -1,155 +1,408 @@
 <div align="center">
 
-# VISION <span style="color: #4da8da;">AI</span>
+<img src="frontend/public/VisionAi.png" width="56" alt="Vision AI Logo" />
 
-### Explainable AI for Diabetic Retinopathy Screening in Rural India
-**SIH26038 · Team Viltrumites**
+<br />
 
-<p align="center">
-  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white" />
-  <img src="https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB" />
-  <img src="https://img.shields.io/badge/Node.js-43853D?style=flat-square&logo=node.js&logoColor=white" />
-  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=flat-square&logo=postgresql&logoColor=white" />
-  <img src="https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white" />
-  <img src="https://img.shields.io/badge/MATLAB-0076A8?style=flat-square&logo=mathworks&logoColor=white" />
-  <img src="https://img.shields.io/badge/Simulink-0076A8?style=flat-square&logo=mathworks&logoColor=white" />
-  <img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white" />
-</p>
+# Vision AI
 
-An AI-assisted screening platform connecting rural screening staff with remote ophthalmologists.
+<h3><strong>Explainable AI for Diabetic Retinopathy Screening in Rural India</strong></h3>
 
-<br/>
+<sub>Problem Statement: SIH26038 &nbsp;·&nbsp; Smart India Hackathon 2026</sub>
 
-[Overview](#overview) &nbsp;&nbsp;&nbsp; [Workflow](#clinical-workflow) &nbsp;&nbsp;&nbsp; [Architecture](#system-architecture) &nbsp;&nbsp;&nbsp; [AI Model](#ai-model) &nbsp;&nbsp;&nbsp; [Explainability](#explainability) &nbsp;&nbsp;&nbsp; [Simulation](#simulation) &nbsp;&nbsp;&nbsp; [Security](#security) &nbsp;&nbsp;&nbsp; [Setup](#setup) &nbsp;&nbsp;&nbsp; [Team](#team-viltrumites)
+<br />
+
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
+![Python](https://img.shields.io/badge/Python_3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![MATLAB](https://img.shields.io/badge/MATLAB-0076A8?style=for-the-badge&logo=mathworks&logoColor=white)
+
+<br />
+
+<table>
+  <tr>
+    <td align="center" width="340">
+      <strong>Clinical Dashboard</strong><br />
+      <sub>Doctor review panel — full-res images, AI assessment, Grad-CAM</sub><br /><br />
+      <a href="#">
+        <img src="https://img.shields.io/badge/visionai--clinical--dashboard.local-20232A?style=for-the-badge&logoColor=white" alt="Clinical Dashboard" />
+      </a>
+    </td>
+    <td align="center" width="340">
+      <strong>Inference API</strong><br />
+      <sub>FastAPI inference server — /analyze endpoints</sub><br /><br />
+      <a href="#">
+        <img src="https://img.shields.io/badge/visionai--inference--api.local-009688?style=for-the-badge&logoColor=white" alt="Inference API" />
+      </a>
+    </td>
+  </tr>
+</table>
 
 </div>
 
 ---
 
-## Overview
+## Table of Contents
 
-Vision AI addresses the shortage of ophthalmologists in rural India by providing a secure, explainable, and AI-assisted diabetic retinopathy (DR) screening platform. The system enables screening staff to capture bilateral fundus images, leverages deep learning for initial analysis with explainability, and integrates a doctor-in-the-loop workflow for final clinical decision and reporting.
-
-- AI-assisted triage for early DR screening in rural settings
-- Bilateral eye analysis with explainability (Grad-CAM)
-- Secure, role-based clinical workflow (Admin, Doctor, Staff, Patient)
-- Rural deployment simulation using MATLAB/Simulink for resource planning
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [AI Model](#ai-model)
+- [Project Structure](#project-structure)
+- [Quick Start](#quick-start)
+- [API Reference](#api-reference)
+- [Platform](#platform)
+- [Features](#features)
+- [Doctor-in-the-Loop](#doctor-in-the-loop)
+- [Explainability](#explainability)
+- [Simulation](#simulation)
+- [Tech Stack](#tech-stack)
+- [Docker Deployment](#docker-deployment)
+- [Environment Variables](#environment-variables)
+- [Implementation Status](#implementation-status)
+- [Team](#team)
 
 ---
 
-## Clinical Workflow
+## Overview
+
+Vision AI is a production-grade, AI-assisted triage system designed for diabetic retinopathy (DR) screening in resource-constrained rural healthcare environments. It securely processes bilateral fundus images in real-time, generates explainable Grad-CAM heatmaps, and coordinates a strict "doctor-in-the-loop" clinical workflow.
+
+The system handles the full screening lifecycle — from rural patient registration and image upload, through AI inference and clinical routing, to ophthalmologist review and final report generation.
+
+| Component | Description |
+|---|---|
+| **AI Model** | EfficientNetB0 (V2) for 5-class DR classification |
+| **Workflow** | Bilateral (Left & Right eye) independent screening |
+| **Explainability** | Grad-CAM attention heatmaps |
+| **Controls** | Strict RBAC, immutable clinical reports, doctor overrides |
+| **Interfaces** | Express API, FastAPI Inference, React Portals |
+
+> **Important:** This project implements an assistive screening pipeline. The AI does not make autonomous diagnoses; the remote doctor provides the final clinical decision.
+
+---
+
+## Architecture
+
+The screening path securely bridges rural screening staff with remote specialists using independent APIs and AI processing.
+
+### Screening Pipeline
 
 ```mermaid
 flowchart LR
-    A((1<br/>Patient<br/>Registration)) --> B((2<br/>Bilateral<br/>Fundus Images<br/>Left & Right))
-    B --> C((3<br/>AI<br/>Analysis))
-    C --> D((4<br/>Explainability<br/>Grad-CAM))
-    D --> E((5<br/>Doctor<br/>Review))
-    E --> F((6<br/>Clinical<br/>Decision))
-    F --> G((7<br/>Clinical<br/>Report))
-    
-    style A fill:#0d263b,stroke:#2a527b,color:#fff
-    style B fill:#0d263b,stroke:#2a527b,color:#fff
-    style C fill:#0d263b,stroke:#2a527b,color:#fff
-    style D fill:#0d263b,stroke:#2a527b,color:#fff
-    style E fill:#0d263b,stroke:#2a527b,color:#fff
-    style F fill:#0d263b,stroke:#2a527b,color:#fff
-    style G fill:#0d263b,stroke:#2a527b,color:#fff
+  A[Patient Registration] --> B[Staff Image Upload]
+  B --> C[Node.js Gateway]
+  C --> D[Image Validation]
+  D --> E[Python Inference Service]
+  E --> F[Left Eye Analysis]
+  E --> G[Right Eye Analysis]
+  F --> H[Grad-CAM Generation]
+  G --> H
+  H --> I[Review Queue]
+  I --> J[Doctor Review]
+  J --> K[Clinical Decision]
+  K --> L[Secure Clinical Report]
+
+  classDef input fill:#e9f5ff,stroke:#1683d8,color:#102a43
+  classDef processing fill:#fff4db,stroke:#d97706,color:#4a2600
+  classDef review fill:#e9f8ef,stroke:#27945b,color:#123b25
+  classDef output fill:#f5efff,stroke:#815ac7,color:#2d1b4e
+  class A,B input
+  class C,D,E,F,G,H processing
+  class I,J,K review
+  class L output
 ```
 
----
-
-## System Architecture
+### System Architecture
 
 ```mermaid
-graph LR
-    subgraph Client
-        F[Frontend<br/>React / Vite]
-    end
-    
-    subgraph Server
-        B[Backend API<br/>Node.js / Express]
-        DB[(PostgreSQL<br/>Database)]
-    end
-    
-    subgraph AI Engine
-        I[Inference Service<br/>Python / FastAPI]
-        M[MATLAB Engine<br/>Model Inference]
-        K[DR_EfficientNetB0_V2.mat<br/>5-Class Model]
-    end
-
-    F -->|HTTP| B
-    B --- DB
-    B -->|API| I
-    I --> M
-    M --> K
-    
-    style Client fill:#131d26,stroke:#304355,color:#fff
-    style Server fill:#131d26,stroke:#304355,color:#fff
-    style AI Engine fill:#131d26,stroke:#304355,color:#fff
+flowchart TD
+    S[Frontend Portals] --> V{RBAC Gateway}
+    V -->|Admin| X[System Management]
+    V -->|Doctor| D[Clinical Review Queue]
+    V -->|Staff| R[Screening Registration]
+    R --> I[Inference API]
+    I --> P[EfficientNetB0_V2.keras]
+    P --> M[Predictions + Heatmaps]
+    M --> DB[(PostgreSQL)]
+    DB --> D
+    D --> C[Clinical Report Generator]
 ```
 
 ---
 
 ## AI Model
 
-The system uses a custom-trained **EfficientNetB0** model (`DR_EfficientNetB0_V2.mat`) for 5-class diabetic retinopathy classification. Left and right eye images are processed independently, and Grad-CAM is used to provide model attention visualization for clinical interpretability.
+The core inference engine utilizes `DR_EfficientNetB0_V2.mat` (deployed via translated Keras weights) for 5-class diabetic retinopathy classification.
 
-> [!NOTE]
-> Grad-CAM highlights regions that influenced the model's prediction. It is an attention visualization tool and not a clinically validated lesion segmentation map.
+| Class | Diagnosis | Description |
+|---|---|---|
+| 0 | No DR | No apparent diabetic retinopathy |
+| 1 | Mild | Microaneurysms only |
+| 2 | Moderate | More than just microaneurysms, but less than severe |
+| 3 | Severe | 20+ intraretinal hemorrhages, venous beading, or IRMA |
+| 4 | Proliferative | Neovascularization or vitreous/preretinal hemorrhage |
+
+**Bilateral Analysis:** Left and right eyes are processed independently, ensuring accurate lateral assessment for the reviewing doctor.
+
+<br />
 
 <div align="center">
-
-| Class | Diagnosis |
-|:---:|:---|
-| 0 | No DR |
-| 1 | Mild |
-| 2 | Moderate |
-| 3 | Severe |
-| 4 | Proliferative |
-
+<img src="frontend/public/images/hero-slide-2.png" alt="AI Screening Interface" width="80%" style="border-radius: 8px;" />
+<br /><sub>AI-assisted screening interface demonstrating bilateral analysis and clinical workflow.</sub>
 </div>
 
 ---
 
-## Explainability & Simulation
+## Project Structure
 
-<table width="100%" style="border: none;">
-  <tr>
-    <td width="50%" align="center" style="border: none;">
-      <b>Clinical Explainability</b><br/><br/>
-      <img src="frontend/public/images/hero-slide-2.png" width="90%" style="border-radius: 8px;" />
-    </td>
-    <td width="50%" align="center" style="border: none;">
-      <b>MATLAB/Simulink Rural Simulation</b><br/><br/>
-      <img src="frontend/src/assets/simulation-1.jpeg" width="45%" style="border-radius: 8px; margin-right: 5px;" />
-      <img src="frontend/src/assets/simulation-2.jpeg" width="45%" style="border-radius: 8px;" />
-    </td>
-  </tr>
-</table>
+```
+Vision-AI/
+├── backend/
+│   ├── src/             Express API, Auth Middleware, Routing
+│   ├── prisma/          PostgreSQL Database Schema & Migrations
+│   ├── Dockerfile       Node.js Container
+│   └── package.json
+├── config/              Environment templates & configurations
+├── docs/                Technical architecture documentation
+├── frontend/
+│   ├── public/          Static Assets & Images
+│   ├── src/             React Application (Admin, Doctor, Staff, Patient)
+│   ├── Dockerfile       Nginx Static Delivery
+│   └── package.json
+├── inference_service/
+│   ├── model/           Production Weights & Configs
+│   ├── main.py          FastAPI Inference Engine
+│   ├── requirements.txt Python Dependencies
+│   └── Dockerfile       Python Container
+├── licenses/            Open Source Licenses
+├── matlab/              Simulink Models & MATLAB Reference Algorithms
+├── docker-compose.yml   Production Stack Orchestration
+├── .env.example         Environment template
+└── README.md            This file
+```
 
 ---
 
-<table width="100%">
-<tr>
-<td width="50%" valign="top">
+## Quick Start
 
-## Technology Stack
+**Prerequisites:** Docker, Docker Compose, Node.js (for local dev)
 
-| Layer | Technology |
+```bash
+# Clone repository
+git clone https://github.com/SudarshanSingh1/DR-Screening-System.git
+cd DR-Screening-System
+
+# Configure credentials
+cp .env.example .env
+# Ensure environment variables are populated for backend, frontend, and database
+
+# Run full stack (Database + API + Inference + Frontend)
+docker compose up --build
+```
+
+| Access Point | URL |
 |---|---|
-| **Frontend** | React, TypeScript, Vite |
-| **Backend** | Node.js, Express |
-| **Database** | PostgreSQL |
-| **AI Inference** | Python, FastAPI, MATLAB Engine |
-| **Model** | EfficientNetB0 (`DR_EfficientNetB0_V2.mat`) |
-| **Simulation** | MATLAB, Simulink |
-| **Containerization** | Docker, Docker Compose |
+| Frontend Portal | http://localhost:3000 |
+| Backend API | http://localhost:8080 |
+| Inference API | http://localhost:8000 |
+| API Health | http://localhost:8000/health |
 
-</td>
-<td width="50%" valign="top">
+---
 
-## Team Viltrumites
+## API Reference
+
+### Analyze Bilateral Fundus Images
+
+```
+POST /analyze
+```
+
+**Request** (Multipart Form)
+
+- `leftEye`: (File) Left eye fundus image (JPEG/PNG)
+- `rightEye`: (File) Right eye fundus image (JPEG/PNG)
+
+**Response**
+
+```json
+{
+  "leftEye": {
+    "success": true,
+    "prediction": {
+      "classIndex": 2,
+      "label": "Moderate",
+      "confidence": 0.8421
+    },
+    "probabilities": [0.05, 0.08, 0.84, 0.02, 0.01],
+    "isReferable": true,
+    "isLowConfidence": false,
+    "gradCam": "data:image/png;base64,..."
+  },
+  "rightEye": {
+    "success": true,
+    "prediction": {
+      "classIndex": 0,
+      "label": "No DR",
+      "confidence": 0.9812
+    },
+    "probabilities": [0.98, 0.01, 0.00, 0.00, 0.00],
+    "isReferable": false,
+    "isLowConfidence": false,
+    "gradCam": "data:image/png;base64,..."
+  }
+}
+```
+
+---
+
+## Platform
+
+The unified React application provides distinct, role-based portals:
+
+| Portal | Purpose |
+|---|---|
+| **Admin Dashboard** | System-wide metrics, facility mapping, staff/doctor provisioning |
+| **Doctor Dashboard** | Clinical review queue, AI assessment viewer, and diagnostic reporting |
+| **Staff Portal** | Patient registration and bilateral fundus image uploading at rural sites |
+| **Patient Portal** | Secure retrieval of finalized clinical reports |
+
+---
+
+## Features
+
+### Core Capabilities
+
+| Feature | Description |
+|---|---|
+| AI Triage Inference | Real-time 5-class DR classification via EfficientNetB0 |
+| Bilateral Workflow | Left and Right eye independently processed and tracked |
+| Explainability | Grad-CAM heatmaps overlaid on original fundus images |
+| Secure Review Pipeline | Doctor-in-the-loop report authorization |
+| Immutable Records | Final clinical reports are securely generated and stored |
+| Rural Simulation | MATLAB/Simulink models for facility resource planning |
+
+<br />
+
+<div align="center">
+<img src="frontend/public/images/hero-slide-4.png" alt="Clinical Workflow" width="80%" style="border-radius: 8px;" />
+<br /><sub>Screening staff registering patients and uploading images for remote analysis.</sub>
+</div>
+
+---
+
+## Doctor-in-the-Loop
+
+AI Prediction ≠ Final Clinical Decision.
+
+The AI produces an assistive screening assessment to prioritize review queues and highlight regions of interest. The remote reviewing doctor assesses:
+- Raw, full-resolution fundus images
+- Eye-specific AI results and classification
+- Grad-CAM attention heatmaps
+- Relevant patient and screening context
+
+The final clinical report is generated exclusively from the completed doctor review workflow, fully overriding the initial AI prediction in the clinical record.
+
+---
+
+## Explainability
+
+To build clinical trust, the model utilizes **Grad-CAM** (Gradient-weighted Class Activation Mapping). It visualizes the model's activation and attention associated with its prediction.
+
+**Important Limitation:** Grad-CAM is strictly an attention visualization. It is **NOT** a medically validated lesion segmentation map or ground-truth boundary detector.
+
+---
+
+## Simulation
+
+A distinct MATLAB/Simulink component supports the broader rural deployment strategy, completely isolated from the standard web production stack:
+
+| Property | Value |
+|---|---|
+| Domain | Rural healthcare resource planning |
+| Function | Facility load and triage bottleneck modelling |
+| Stack | MATLAB / Simulink |
+
+<br />
+
+<div align="center">
+<img src="frontend/public/images/hero-slide-3.png" alt="Simulation and Analysis" width="80%" style="border-radius: 8px;" />
+<br /><sub>Analyzing resource constraints and deployment strategies across rural contexts.</sub>
+</div>
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|---|---|
+| Frontend | React, TypeScript, Vite, TailwindCSS |
+| Backend API | Node.js, Express, TypeScript |
+| Database | PostgreSQL |
+| ORM | Prisma |
+| AI Inference | Python, FastAPI |
+| Explainability | TensorFlow, Grad-CAM |
+| Simulation | MATLAB, Simulink |
+| Containerization | Docker, Docker Compose |
+
+---
+
+## Docker Deployment
+
+```bash
+# Build and run the entire stack
+docker compose -f docker-compose.yml up --build
+```
+
+**Services orchestrated:**
+- `database`: PostgreSQL 16
+- `backend`: Node.js Express API
+- `frontend`: React static application
+- `inference`: Python FastAPI model server
+
+---
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and configure credentials:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Description |
+|---|---|
+| DATABASE_URL | PostgreSQL connection string |
+| INFERENCE_SERVICE_URL | Internal routing to Python API |
+| SESSION_SECRET | Secure hash for sessions |
+| JWT_SECRET | Authentication token signing key |
+
+Never commit `.env` to version control. It is listed in `.gitignore`.
+
+---
+
+## Implementation Status
+
+| Component | Status | Notes |
+|---|---|---|
+| AI Inference Pipeline | Complete | EfficientNetB0, Grad-CAM, FastAPI |
+| Bilateral Workflow | Complete | Independent Left/Right processing |
+| Doctor-in-the-loop Logic | Complete | AI acts as assist; Doctor overrides |
+| Node.js / Express API | Complete | RBAC, Prisma, Auth |
+| React Portals | Complete | Admin, Doctor, Staff |
+| PostgreSQL Database | Complete | Schema fully migrated |
+| Docker Containerization | Complete | 4-service orchestration |
+| Simulink Resource Models | Complete | Available in `matlab/` |
+| Multi-image per eye | Planned | Macula + Optic disc views |
+| External Object Storage | Planned | AWS S3 migration for images |
+
+---
+
+## Team
+
+**Team Viltrumites**
+
+Smart India Hackathon 2026 — Problem Statement: SIH26038
 
 | Name | Role |
 |---|---|
@@ -160,34 +413,10 @@ The system uses a custom-trained **EfficientNetB0** model (`DR_EfficientNetB0_V2
 | **Krishna Kumar** | Team Member |
 | **Aditya Singh** | Team Member |
 
-</td>
-</tr>
-</table>
-
 ---
 
-<table width="100%">
-<tr>
-<td width="50%" valign="top">
+<div align="center">
 
-## Future Work
+Built for Smart India Hackathon 2026 (SIH26038)
 
-- Multi-image per eye processing
-- Expanded model validation
-- Dedicated segmentation models
-- Scalable external object storage
-- Enhanced rural simulation models
-- Deployment optimization
-
-</td>
-<td width="50%" valign="top">
-
-## License
-
-Copyright © 2026. All rights reserved.
-
-This project is developed for Smart India Hackathon (SIH26038) under Team Viltrumites.
-
-</td>
-</tr>
-</table>
+</div>
