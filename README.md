@@ -1,8 +1,12 @@
 <div align="center">
   
-# VISION AI
-**MathWorks Explainable AI for Diabetic Retinopathy Screening in Rural India**
-*SIH26038*
+# Vision AI
+
+### Explainable AI for Diabetic Retinopathy Screening in Rural India
+
+**SIH26038**
+
+**Team Viltrumites**
 
 <p align="center">
   <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" />
@@ -18,51 +22,50 @@
   <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
 </p>
 
-Vision AI is an AI-assisted diabetic retinopathy (DR) screening workflow built for rural healthcare contexts. Screening staff capture patient information and bilateral fundus images. An AI model analyzes the images, generating predictions and Grad-CAM explainability heatmaps. A remote ophthalmologist then reviews the AI-assisted assessment in a doctor-in-the-loop clinical workflow before the final clinical report is issued.
+Vision AI is an AI-assisted diabetic retinopathy screening platform designed around a rural healthcare workflow. It combines bilateral fundus-image analysis, explainability, secure clinical workflows, doctor review, and clinical reporting.
 
-**[Note: The AI acts strictly as an assistive screening tool. The doctor provides the final clinical decision.]**
+**[Note: The AI strictly assists the screening process. The reviewing doctor makes the final clinical decision.]**
 
 </div>
 
 ---
 
-## 📋 Table of Contents
+## 📋 Project Information
 
-- [Project Identity](#-project-identity)
-- [Overview](#-overview)
-- [The Problem](#-the-problem)
-- [The Solution](#-the-solution)
-- [Screening Workflow](#-screening-workflow)
-- [Architecture](#-architecture)
-- [AI Model](#-ai-model)
-- [Bilateral Screening & Explainability](#-bilateral-screening--explainability)
-- [Doctor-in-the-Loop](#-doctor-in-the-loop)
-- [Platform Roles](#-platform-roles)
-- [Technology Stack](#-technology-stack)
-- [MATLAB & Simulink](#-matlab--simulink)
-- [Security](#-security)
-- [Local Development](#-local-development)
-- [Docker](#-docker)
-- [Project Structure](#-project-structure)
-- [Platform Screenshots](#-platform-screenshots)
-- [Limitations](#-limitations)
-- [Future Work](#-future-work)
-- [Team](#-team)
-- [License](#-license)
+- **Problem Statement:** SIH26038
+- **Team:** Viltrumites
+- **Team Leader:** Akshay Kumar Verma
+- **Members:** Anshu Kumar, Aditi Gargi, Sudarshan Kumar, Krishna Kumar, Aditya Singh
 
 ---
 
-## 🔖 Project Identity
+## 📑 Table of Contents
 
-- **Problem Statement:** SIH26038
-- **Problem Title:** MathWorks Explainable AI for Diabetic Retinopathy Screening in Rural India
-- **Team Name:** Viltrumites
+- [Overview](#-overview)
+- [The Problem](#-the-problem)
+- [The Solution](#-the-solution)
+- [Core Workflow](#-core-workflow)
+- [Platform](#-platform)
+- [System Architecture](#-system-architecture)
+- [AI Model](#-ai-model)
+- [Explainability](#-explainability)
+- [Doctor-in-the-Loop](#-doctor-in-the-loop)
+- [Simulation](#-simulation)
+- [Security](#-security)
+- [Technology Stack](#-technology-stack)
+- [Project Structure](#-project-structure)
+- [Local Development](#-local-development)
+- [Platform Screenshots](#-platform-screenshots)
+- [Team](#-team)
+- [Limitations](#-limitations)
+- [Future Work](#-future-work)
+- [License](#-license)
 
 ---
 
 ## 📖 Overview
 
-Vision AI provides an AI-assisted DR screening workflow designed to operate in resource-constrained rural healthcare environments. By connecting local screening staff capturing bilateral fundus images with remote ophthalmologists, the system facilitates early detection of diabetic retinopathy. The platform handles secure patient registration, image validation, AI inference, Grad-CAM visualization, and final clinical review coordination.
+Vision AI is an AI-assisted diabetic retinopathy (DR) screening workflow built for resource-constrained rural healthcare environments. By connecting local screening staff capturing bilateral fundus images with remote ophthalmologists, the system facilitates early detection of diabetic retinopathy. The platform handles secure patient registration, image validation, AI inference, Grad-CAM visualization, and final clinical review coordination.
 
 ---
 
@@ -82,19 +85,21 @@ Vision AI addresses these constraints by introducing an AI-assisted triage syste
 
 ```mermaid
 graph TD
-    A[Patient] --> B(Screening Staff)
-    B --> C[Bilateral Fundus Images]
-    C --> D[Image Validation]
-    D --> E[AI Inference]
+    A[Patient Registration] --> B[Fundus Image Capture]
+    B --> C[Image Validation]
+    C --> D[Left + Right Eye AI Analysis]
+    D --> E[DR Classification]
     E --> F[Grad-CAM Explainability]
-    F --> G(Doctor Review)
-    G --> H[Clinical Decision]
-    H --> I[Clinical Report]
+    F --> G[Screening Result]
+    G --> H[Doctor Review]
+    H --> I[Clinical Decision]
+    I --> J[Clinical Report]
+    J --> K[Authorized Access]
 ```
 
 ---
 
-## 🔄 Screening Workflow
+## 🔄 Core Workflow
 
 The current Vision AI V2 workflow for rural screening is structured as follows:
 
@@ -113,16 +118,34 @@ The current Vision AI V2 workflow for rural screening is structured as follows:
 
 ---
 
-## 🏗️ Architecture
+## 💻 Platform
+
+Vision AI implements distinct role-based portals tailored to specific workflows:
+
+### Screening Staff
+Patient registration and bilateral fundus image submission at the rural facility level.
+
+### Doctor
+AI-assisted screening review, full-resolution image inspection, Grad-CAM visualization assessment, clinical decision entry, and report authorization.
+
+### Admin
+Overall system management, user and facility provisioning, screening oversight, and administrative security controls.
+
+### Patient
+Secure access to finalized clinical information and reports (where implemented).
+
+---
+
+## 🏗️ System Architecture
 
 ```mermaid
 graph TD
     Frontend[Frontend] -->|API Request| Backend[Backend API]
     Backend --> PostgreSQL[(PostgreSQL)]
     Backend --> Inference[Inference Service]
-    Inference --> MatlabEngine[MATLAB Engine]
-    MatlabEngine --> Model[DR_EfficientNetB0_V2.mat]
-    Inference --> AI[AI Prediction + Grad-CAM]
+    Inference --> MatlabEngine[MATLAB Engine / Python Provider]
+    MatlabEngine --> Model[DR_EfficientNetB0_V2.mat / .keras]
+    Inference --> AI[Prediction + Grad-CAM]
     AI --> Backend
     Backend --> Doctor[Doctor Review]
     Doctor --> Report[Clinical Report]
@@ -132,66 +155,87 @@ graph TD
 
 ## 🧠 AI Model
 
-The core inference engine utilizes `DR_EfficientNetB0_V2.mat`.
+The core inference engine utilizes the canonical `DR_EfficientNetB0_V2.mat` (and `.keras` transplanted weight equivalent). 
 
-It performs a 5-class classification of Diabetic Retinopathy:
+It performs a 5-class classification of Diabetic Retinopathy on a per-eye basis:
 
-| Class | Diagnosis |
-|------:|-----------|
+| Class | Meaning |
+|---:|---|
 | 0 | No DR |
 | 1 | Mild |
 | 2 | Moderate |
 | 3 | Severe |
 | 4 | Proliferative |
 
+The current workflow independently analyzes the Left Eye and the Right Eye. 
+*(Note: The system processes standard bilateral images and does not utilize a 3-image mosaic per eye or ensemble inference.)*
+
 ---
 
-## 👁️ Bilateral Screening & Explainability
+## 👁️ Explainability
 
-**Bilateral Screening:**
-Each eye is processed independently. The system strictly requires one left eye image and one right eye image per screening. The AI returns eye-specific predictions and explainability artifacts, allowing the reviewing doctor to assess bilateral asymmetry in pathology.
+To build clinical trust, the model utilizes **Grad-CAM** (Gradient-weighted Class Activation Mapping). 
 
-**Explainability (Grad-CAM):**
-To build clinical trust, the model utilizes Grad-CAM (Gradient-weighted Class Activation Mapping). Grad-CAM provides a visualization of the model's activation and attention associated with its prediction.
+Grad-CAM provides a visualization of the model's activation/attention associated with its prediction.
 
-*Limitation Note:* Grad-CAM visualizes where the AI "looked" to make its decision. It is an attention visualization rather than a medically validated diagnostic lesion segmentation map.
+**IMPORTANT LIMITATION:**
+Grad-CAM is strictly an attention visualization. It is **NOT**:
+- A medically validated lesion segmentation map.
+- A lesion boundary detection algorithm.
+- Ground-truth lesion localization.
 
 ---
 
 ## 👨‍⚕️ Doctor-in-the-Loop
 
-AI Prediction != Clinical Decision.
+**AI prediction ≠ final clinical decision.**
 
-Vision AI strictly isolates the AI's assistive assessment from the final medical diagnosis. The doctor reviews:
-- The raw fundus images
-- AI predictions and probabilities (where available)
-- Grad-CAM visualizations
+Vision AI strictly isolates the AI's assistive assessment from the final medical diagnosis. The AI produces an assistive screening assessment to prioritize review queues and highlight regions of interest.
+
+The remote reviewing doctor assesses:
+- The raw, full-resolution fundus images
+- Eye-specific AI results and classification
+- Probabilities (where available)
+- Grad-CAM attention heatmaps
 - Relevant patient and screening context
 
-The doctor records the final clinical decision, and the final clinical report reflects the doctor's decision exclusively, overriding the AI prediction in all official documentation.
+The doctor then manually records the final clinical decision. The final clinical report is generated exclusively from the completed doctor review workflow, fully overriding the initial AI prediction in the clinical record.
 
 ---
 
-## 👥 Platform Roles
+## ⚙️ Simulation
 
-Vision AI implements distinct role-based portals:
+A distinct MATLAB/Simulink component supports the broader rural deployment strategy:
+- Screening workflow simulation
+- Rural resource planning
+- System and facility resource behavior modelling
 
-- **Admin:** Manages system-wide metrics, facility mapping, staff/doctor provisioning, and system monitoring.
-- **Doctor:** Accesses the clinical review queue, evaluates AI-assisted screening assessments, and issues diagnostic reports.
-- **Screening Staff:** Registers patients and uploads bilateral fundus images at rural screening facilities.
-- **Patient:** Securely retrieves their finalized clinical reports.
+These simulations model facility load and triage bottlenecks, separate from the primary web application production architecture.
 
 ---
 
-## 💻 Technology Stack
+## 🔒 Security
+
+Vision AI implements robust defense-in-depth security mechanisms natively in the application layer:
+- **Authentication:** Secure cookie/session-based authentication.
+- **Role-Based Access Control:** Strict RBAC across all API boundaries.
+- **Facility Scoping:** Staff can only access patient data tied to their assigned facility.
+- **Protected Data:** Patient records, images, and reports are protected via authorization checks.
+- **IDOR Protection:** Insecure Direct Object Reference protections on sensitive endpoints.
+- **Password Hashing:** Secure credential storage using bcrypt.
+- **Environment Secrets:** Sensitive keys stored securely in `.env` files.
+
+---
+
+## 🛠️ Technology Stack
 
 | Layer | Technology |
-|------|------------|
+|---|---|
 | Frontend | React, Vite, TailwindCSS |
 | Backend | Node.js, Express, TypeScript |
 | Database | PostgreSQL |
 | ORM | Prisma |
-| AI Inference | Python, FastAPI, MATLAB Engine |
+| AI Inference | Python, FastAPI |
 | Model | EfficientNetB0 (V2) |
 | Explainability | Grad-CAM |
 | Simulation | MATLAB / Simulink |
@@ -199,130 +243,101 @@ Vision AI implements distinct role-based portals:
 
 ---
 
-## ⚙️ MATLAB / Simulink
-
-- **MATLAB Engine:** Used in the AI inference pipeline to run the compiled model artifact (`DR_EfficientNetB0_V2.mat`) and generate predictions and Grad-CAM visualizations.
-- **Simulink:** Utilized for rural screening resource-planning simulation work to model facility load and triage bottlenecks.
-
----
-
-## 🔒 Security
-
-Vision AI implements defense-in-depth security mechanisms:
-- Standardized authentication via secure cookies/sessions.
-- Strict role-based authorization for all API routes.
-- Facility scoping (staff can only access patients within their assigned facility).
-- Protected patient data and protected image/report access.
-- IDOR (Insecure Direct Object Reference) protections on sensitive endpoints.
-- Secure password hashing using bcrypt.
-- Environment-based secrets management.
-
----
-
-## 🛠️ Local Development
-
-1. **Prerequisites:** Ensure Docker and Docker Compose are installed.
-2. **Environment Variables:** Configure `.env` files in `backend/.env` and `frontend/.env` based on `.env.example`.
-3. **Install Dependencies:**
-   ```bash
-   cd frontend && npm install
-   cd ../backend && npm install
-   ```
-4. **Start the Stack:** From the repository root, start the services:
-   ```bash
-   docker compose up --build
-   ```
-
-*(Note: Ensure proper MATLAB Engine licensing or runtime prerequisites are configured on the host machine or within the inference container as required by the Python/MATLAB integration).*
-
----
-
-## 🐳 Docker
-
-The application relies on `docker-compose.yml` to orchestrate the following services:
-- **`database`**: PostgreSQL instance for robust data persistence.
-- **`backend`**: Node.js API server handling business logic and Prisma ORM.
-- **`frontend`**: React frontend served for distinct user portals.
-- **`inference`**: Python-based inference service wrapping the MATLAB model.
-
----
-
 ## 📂 Project Structure
 
 ```text
 Vision-AI/
-├── backend/            # Express API, Prisma schema, auth middleware
-├── config/             # Environment and platform configurations
-├── docs/               # Technical architecture & simulation documentation
-├── frontend/           # React application (Admin, Doctor, Staff, Patient workflows)
-├── inference_service/  # Python FastAPI service & MATLAB Engine integration
-├── licenses/           # Project licenses
-├── matlab/             # Reference algorithms and Simulink models
-├── model/              # Canonical DR_EfficientNetB0_V2.mat artifact
-├── docker-compose.yml  # Docker orchestration
+├── backend/
+├── config/
+├── docs/
+├── frontend/
+├── inference_service/
+├── licenses/
+├── matlab/
+├── model/
+├── docker-compose.yml
+├── .env.example
 ├── .gitignore
 └── README.md
 ```
 
 ---
 
+## 💻 Local Development
+
+**Prerequisites:** Docker, Docker Compose, and Node.js.
+
+1. **Environment Setup:**
+   Duplicate the provided `.env.example` file and configure your local settings.
+   ```bash
+   cp .env.example .env
+   # Ensure backend/.env and frontend/.env are appropriately populated
+   ```
+
+2. **Start Docker Services:**
+   Run the following from the repository root to start PostgreSQL, Backend API, Frontend, and Inference Service:
+   ```bash
+   docker compose up --build
+   ```
+
+*(Note: The MATLAB Web Desktop is not a public service and is excluded from the standard production deployment stack. Ensure MATLAB Engine prerequisites are satisfied locally if utilizing the MATLAB provider for inference).*
+
+---
+
 ## 📸 Platform Screenshots
 
-### Screening Staff Workflow
+### Screening Staff
+<!-- Add actual screenshot here -->
 
-<!-- Add screening staff workflow screenshot here later -->
+### AI Screening
+<!-- Add actual screenshot here -->
 
 ### Doctor Review
-
-<!-- Add doctor review screenshot here later -->
+<!-- Add actual screenshot here -->
 
 ### Admin Dashboard
+<!-- Add actual screenshot here -->
 
-<!-- Add admin dashboard screenshot here later -->
+### Clinical Report
+<!-- Add actual screenshot here -->
 
-### Patient Report
-
-<!-- Add patient report screenshot here later -->
-
-### Grad-CAM Explainability
-
-<!-- Add actual Grad-CAM example here later -->
-
----
-
-## ⚠️ Limitations
-
-- **Single Image per Eye:** The current screening API exclusively supports one image per eye.
-- **Clinical Validation:** The model represents a prototype-stage implementation and lacks rigorous longitudinal clinical validation against diverse demographics.
-- **Grad-CAM Interpretation:** Explanations represent network attention rather than explicit lesion segmentation.
-- **Local Storage:** Images are currently persisted locally via Docker volumes rather than scalable cloud object storage.
-- **MATLAB Licensing:** Full inference deployment may be constrained by MATLAB Engine licensing requirements.
-
----
-
-## 🚀 Future Work
-
-- Expansion to support multiple fundus images per eye (e.g., macula-centered and optic disc-centered views).
-- Improved and expanded clinical validation across wider demographic distributions.
-- Implementation of dedicated lesion segmentation models.
-- Migration to scalable external object storage (e.g., AWS S3) for secure image archiving.
-- Expanded Simulink rural resource planning for optimized national deployment strategies.
-- Overall deployment and inference optimization.
+### Explainability / Grad-CAM
+<!-- Add actual screenshot here -->
 
 ---
 
 ## 👥 Team
 
-| Member | Role |
-|--------|------|
-| Akshay Kumar Verma | Team Leader |
-| Anshu Kumar | Team Member |
-| Aditi Gargi | Team Member |
-| Sudarshan Kumar | Team Member |
-| Krishna Kumar | Team Member |
-| Aditya Singh | Team Member |
+**Team Viltrumites**
 
-<!-- Team photos can be added here later -->
+**Team Leader:**
+- Akshay Kumar Verma
+
+**Members:**
+- Anshu Kumar
+- Aditi Gargi
+- Sudarshan Kumar
+- Krishna Kumar
+- Aditya Singh
+
+---
+
+## ⚠️ Limitations
+
+- **Single Image per Eye:** The current workflow strictly supports one image per eye (bilateral).
+- **Explainability:** Grad-CAM illustrates network attention, not explicit lesion segmentation.
+- **Clinical Validation:** The model represents a prototype-stage implementation and lacks rigorous longitudinal clinical validation across varied demographics.
+- **Storage:** Images are currently persisted locally via Docker volumes rather than scalable cloud object storage.
+
+---
+
+## 🚀 Future Work
+
+- Expansion to support multiple fundus images per eye.
+- Dedicated lesion segmentation models.
+- Migration to robust S3-compatible external object storage.
+- Expanded Simulink rural resource planning models.
+- Improved and expanded clinical validation.
 
 ---
 
