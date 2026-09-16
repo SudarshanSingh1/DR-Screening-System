@@ -8,7 +8,7 @@ Vision AI is a highly specialized, locally deployable Diabetic Retinopathy (DR) 
 Diabetic retinopathy is a leading cause of preventable blindness, but early screening is severely constrained in rural India due to a critical shortage of ophthalmologists. Patients often do not have the resources to travel to urban centers merely for screening.
 
 **The Solution:**
-Vision AI introduces an AI-assisted triage system at the rural grassroots level. Paramedics and screening staff can capture fundus images and upload them locally. A deep learning model analyzes the images, detects potential pathology, and flags critical cases. Explainability (Grad-CAM) helps visualize the AI's attention, supporting a "doctor-in-the-loop" workflow where a remote ophthalmologist ultimately confirms the diagnosis and provides a clinical report without needing the patient to travel unless intervention is required.
+Vision AI introduces an AI-assisted triage system at the rural grassroots level. Paramedics and screening staff can capture fundus images and upload them locally. A deep learning model analyzes the images, detects potential pathology, and flags critical cases. Explainability (Grad-CAM) helps visualize the AI's attention, supporting a "doctor-in-the-loop" workflow where a remote ophthalmologist ultimately confirms the diagnosis and provides a clinical report without needing the patient to travel unless intervention is required. 
 
 ## Overview
 
