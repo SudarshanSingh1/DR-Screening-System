@@ -20,7 +20,7 @@ services:
     env: docker
     dockerfilePath: ./backend/Dockerfile
     region: singapore
-    plan: free
+    plan: starter
     healthCheckPath: /health
     dockerCommand: sh -c "npx prisma migrate deploy && node dist/server.js"
     disk:
@@ -31,9 +31,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: visionai-db
-          property: connectionString
+        sync: false
       - key: INFERENCE_SERVICE_URL
         fromService:
           type: web
@@ -67,9 +65,3 @@ services:
     envVars:
       - key: ACTIVE_PROVIDER
         value: python_v2
-
-databases:
-  # ─── POSTGRESQL ─────────────────────────────────────────────────────────
-  - name: visionai-db
-    region: singapore
-    plan: free

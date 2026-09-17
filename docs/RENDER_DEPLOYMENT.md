@@ -13,20 +13,21 @@ flowchart TD
     
     Backend -->|Internal Network| Inference[visionai-inference<br>Docker / Python]
     Backend -->|Persistent| Disk[(visionai-uploads<br>Render Disk)]
-    Backend -->|TLS| DB[(visionai-db<br>Render PostgreSQL)]
+    Backend -->|TLS| DB[(External Neon PostgreSQL)]
 ```
 
 ### Services
 
-1. **`visionai-db`**: Render Managed PostgreSQL.
+1. **`Neon PostgreSQL`**: External managed database. (You must supply the connection string).
 2. **`visionai-inference`**: Python FastAPI container serving the `DR_EfficientNetB0_V2.keras` model (V2 pipeline). Note: Requires a paid/standard plan due to ML model memory footprints.
-3. **`visionai-backend`**: Node.js Express API. Uses a Render Persistent Disk (`/app/uploads`) to durably store Fundus Images and Clinical PDF reports.
+3. **`visionai-backend`**: Node.js Express API. Uses a Render Persistent Disk (`/app/uploads`) to durably store Fundus Images and Clinical PDF reports. Connects to Neon PostgreSQL.
 4. **`visionai-frontend`**: Nginx container serving the built Vite React SPA.
 
 ## Prerequisites
 
 - A [Render](https://render.com) account.
 - The `render.yaml` Blueprint file is located at the root of the repository.
+- Your existing **Neon PostgreSQL** `DATABASE_URL`.
 
 ## Automated Deployment (Blueprint)
 
@@ -35,41 +36,38 @@ The simplest way to deploy is using Render's Infrastructure-as-Code feature:
 1. Go to the Render Dashboard.
 2. Click **New > Blueprint**.
 3. Connect your GitHub repository.
-4. Render will automatically detect `render.yaml` and provision the database, backend, inference service, and frontend.
-5. All environment variables, service discovery (internal URLs), and persistent disks are pre-configured in `render.yaml`.
+4. Render will automatically detect `render.yaml` and provision the backend, inference service, and frontend.
+5. Render will **prompt you** to securely enter the `DATABASE_URL` via the dashboard (since it is marked as `sync: false`). Enter your Neon connection string here.
+6. All other environment variables, service discovery (internal URLs), and persistent disks are pre-configured in `render.yaml`.
 
 ## Manual Deployment
 
 If you prefer to deploy services individually:
 
-### 1. Database
-- Create a new PostgreSQL database.
-- Save the **Internal Database URL**.
-
-### 2. Inference Service
+### 1. Inference Service
 - Create a new Web Service.
 - Source: Docker. Dockerfile: `./inference_service/Dockerfile`.
 - Set Environment Variable: `ACTIVE_PROVIDER = python_v2`
 - Save the **Internal Service URL**.
 
-### 3. Backend API
+### 2. Backend API
 - Create a new Web Service.
 - Source: Docker. Dockerfile: `./backend/Dockerfile`.
 - Add a Persistent Disk mounted at `/app/uploads`.
 - **Environment Variables**:
-  - `DATABASE_URL`: (Internal URL from Step 1)
-  - `INFERENCE_SERVICE_URL`: (Internal URL from Step 2)
+  - `DATABASE_URL`: (Your external Neon PostgreSQL URL)
+  - `INFERENCE_SERVICE_URL`: (Internal URL from Step 1)
   - `TRUST_PROXY`: `1`
   - `NODE_ENV`: `production`
   - `STORAGE_BASE_PATH`: `/app/uploads`
   - `SESSION_SECRET`: (Generate a secure 32+ character string)
 - **Start Command**: Wait for build, then Render handles `CMD ["node", "dist/server.js"]`. *Note: You must manually run `npx prisma migrate deploy` via the Render shell, or add it to a custom start script if deploying manually.*
 
-### 4. Frontend
+### 3. Frontend
 - Create a new Web Service.
 - Source: Docker. Dockerfile: `./frontend/Dockerfile`.
 - **Environment Variables**:
-  - `VITE_API_URL`: (External URL from Step 3, e.g. `https://visionai-backend.onrender.com`)
+  - `VITE_API_URL`: (External URL from Step 2, e.g. `https://visionai-backend.onrender.com`)
 - Update the Backend's `ALLOWED_ORIGIN` and `FRONTEND_URL` to match the Frontend's URL.
 
 ## MATLAB Engine Status
