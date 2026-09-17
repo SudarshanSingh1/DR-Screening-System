@@ -58,7 +58,7 @@
 - [Explainability](#explainability)
 - [Simulation](#simulation)
 - [Tech Stack](#tech-stack)
-- [Docker Deployment](#docker-deployment)
+- [Deployment](#deployment)
 - [Environment Variables](#environment-variables)
 - [Implementation Status](#implementation-status)
 - [Team](#team)
@@ -410,18 +410,24 @@ A distinct MATLAB/Simulink component supports the broader rural deployment strat
 
 ---
 
-## Docker Deployment
+---
 
-```bash
-# Build and run the entire stack
-docker compose -f docker-compose.yml up --build
-```
+## Deployment
 
-**Services orchestrated:**
-- `database`: PostgreSQL 16
-- `backend`: Node.js Express API
-- `frontend`: React static application
-- `inference`: Python FastAPI model server
+### Render
+
+**Architecture:**
+- **Frontend**: Vite React SPA (Nginx Container)
+- **Backend API**: Node.js Express Server
+- **PostgreSQL**: Managed Render Database
+- **Inference Service**: Python FastAPI
+
+The core platform (Frontend, Backend, Database, and Python Inference Service) is fully configured for deployment on Render via the included `render.yaml` Blueprint.
+
+> **MATLAB Engine Limitation:**
+> The current production V2 inference pipeline utilizes a standalone translated Keras model (`DR_EfficientNetB0_V2.keras`) running strictly in Python (TensorFlow + FastAPI) to provide DR classification and Grad-CAM explainability. MATLAB Engine deployment requires additional interactive licensing/runtime infrastructure and is not claimed as Render-hosted until validated. MATLAB files remain in `matlab/` for simulation and reference.
+
+See [RENDER_DEPLOYMENT.md](docs/RENDER_DEPLOYMENT.md) for full deployment instructions, environment variables, and persistent storage configurations.
 
 ---
 

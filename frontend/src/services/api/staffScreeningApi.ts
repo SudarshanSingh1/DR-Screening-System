@@ -29,7 +29,8 @@ export const staffScreeningApi = {
     formData.append('image', file);
     
     // fetchApi usually stringifies json, so we use raw fetch for FormData
-    const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '/api/staff';
+    const BASE_URL = (import.meta.env.VITE_API_URL as string) || "";
+const API_BASE = `${BASE_URL}/api/staff`;
     const res = await fetch(`${API_BASE}/screenings/${screeningId}/analyze`, {
       method: 'POST',
       body: formData,

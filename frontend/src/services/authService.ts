@@ -9,7 +9,8 @@ import type { AuthApiResponse, LoginPayload, RegisterPayload, SessionUser } from
 
 // Default to relative '/api/auth' which routes through the Nginx reverse proxy in production/Docker.
 // Allows override via VITE_API_BASE_URL for local Vite dev server.
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '/api/auth';
+const BASE_URL = (import.meta.env.VITE_API_URL as string) || "";
+const API_BASE = `${BASE_URL}/api/auth`;
 
 /** Standardized fetch wrapper to handle errors gracefully */
 async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<AuthApiResponse<T>> {

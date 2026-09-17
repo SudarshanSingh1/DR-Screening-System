@@ -1,4 +1,5 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '/api/admin';
+const BASE_URL = (import.meta.env.VITE_API_URL as string) || "";
+const API_BASE = `${BASE_URL}/api/admin`;
 
 export async function fetchApi(endpoint: string, options: RequestInit = {}): Promise<any> {
   const res = await fetch(`${API_BASE}${endpoint}`, {

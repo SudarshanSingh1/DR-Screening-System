@@ -2,7 +2,7 @@ import { app } from './app';
 import { env } from './config/env';
 import { logger } from './config/logger';
 
-const server = app.listen(env.PORT, () => {
+const server = app.listen(env.PORT, "0.0.0.0", () => {
   logger.info(`Vision AI Auth API running on port ${env.PORT} in ${env.NODE_ENV} mode`);
 });
 
