@@ -158,6 +158,7 @@ The core inference engine utilizes `DR_EfficientNetB0_V2.mat` (deployed via tran
 <img src="frontend/public/images/hero-slide-1.png" alt="AI Screening Interface" width="80%" style="border-radius: 8px;" />
 <br /><sub>AI-assisted screening interface demonstrating bilateral analysis and clinical workflow.</sub>
 </div>
+<img width="1277" height="706" alt="image" src="https://github.com/user-attachments/assets/8798e5d6-1c4f-4470-9b67-2f048a9c7817" />
 
 ---
 
