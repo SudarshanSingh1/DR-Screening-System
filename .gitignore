@@ -41,3 +41,8 @@ slprj/
 # Docker
 .docker/
 patch_images.py
+
+# Local Data & Uploads
+uploads/
+reports/
+generated_reports/
