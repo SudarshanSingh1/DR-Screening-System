@@ -471,6 +471,14 @@ These predefined accounts are available for controlled project testing, presenta
 | Doctor 2 | `doctor2@visionai.health` | `Vision@Doctor2#2026` |
 | Doctor 3 | `doctor3@visionai.health` | `Vision@Doctor3#2026` |
 
+### Patient
+
+| Account | Email | Password |
+|---|---|---|
+| Patient 1 | `patient1@visionai.health` | `Vision@Patient1#2026` |
+| Patient 2 | `patient2@visionai.health` | `Vision@Patient2#2026` |
+| Patient 3 | `patient3@visionai.health` | `Vision@Patient3#2026` |
+
 > These credentials are intended for controlled SIH presentation and project testing. Do not use them as permanent public-production credentials.
 
 ---

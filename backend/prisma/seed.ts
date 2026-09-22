@@ -1,8 +1,8 @@
 /**
  * Idempotent account provisioning script.
  *
- * Provisions predefined SCREENING_STAFF and DOCTOR accounts required for
- * SIH evaluation workflows.  Running this script multiple times is safe:
+ * Provisions predefined SCREENING_STAFF, DOCTOR, and PATIENT accounts required
+ * for SIH evaluation workflows.  Running this script multiple times is safe:
  * each account is looked up by email and created only if absent; existing
  * records are updated to the expected role and credentials.
  *
@@ -87,6 +87,44 @@ const accounts: AccountDefinition[] = [
     password: 'Vision@Doctor3#2026',
     professionalName: 'Dr. Physician 3',
     specialty: 'Ophthalmology',
+  },
+];
+
+// ─── Patient Account Definitions ──────────────────────────────────────────────
+
+interface PatientAccount {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  age: number;
+  gender: string;
+}
+
+const patientAccounts: PatientAccount[] = [
+  {
+    email: 'patient1@visionai.health',
+    password: 'Vision@Patient1#2026',
+    firstName: 'Rahul',
+    lastName: 'Kumar',
+    age: 45,
+    gender: 'Male',
+  },
+  {
+    email: 'patient2@visionai.health',
+    password: 'Vision@Patient2#2026',
+    firstName: 'Priya',
+    lastName: 'Sharma',
+    age: 52,
+    gender: 'Female',
+  },
+  {
+    email: 'patient3@visionai.health',
+    password: 'Vision@Patient3#2026',
+    firstName: 'Arjun',
+    lastName: 'Singh',
+    age: 60,
+    gender: 'Male',
   },
 ];
 
@@ -205,6 +243,106 @@ async function provisionAccount(account: AccountDefinition): Promise<void> {
   console.log(`  [updated]  ${email}  (${expectedRole})`);
 }
 
+async function provisionPatientAccount(account: PatientAccount): Promise<void> {
+  const { email, password } = account;
+
+  // Hash the password before any database operation.
+  // The plaintext is never stored, logged, or returned.
+  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+    include: { credential: true, patientProfile: true },
+  });
+
+  if (!existingUser) {
+    // ── New patient account ──────────────────────────────────────────────────
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          emailVerified: true,
+          role: 'PATIENT',
+          status: 'ACTIVE',
+        },
+      });
+
+      await tx.userCredential.create({
+        data: {
+          userId: user.id,
+          credentialType: 'PASSWORD',
+          passwordHash,
+        },
+      });
+
+      // Create the Patient profile record and link it to the User.
+      // Mirrors the structure used by createPatientAndSendActivation in patient.service.ts.
+      await tx.patient.create({
+        data: {
+          userId: user.id,
+          firstName: account.firstName,
+          lastName: account.lastName,
+          email,
+          age: account.age,
+          gender: account.gender,
+          isActive: true,
+        },
+      });
+    });
+
+    console.log(`  [created]  ${email}  (PATIENT)`);
+    return;
+  }
+
+  // ── Existing patient account ───────────────────────────────────────────────
+  // Safety check: never silently change an account with an unexpected role.
+  if (existingUser.role !== 'PATIENT') {
+    console.warn(
+      `  [skipped]  ${email} — role is ${existingUser.role}, expected PATIENT. Manual review required.`,
+    );
+    return;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Refresh password hash and ensure account is active.
+    await tx.userCredential.upsert({
+      where: { userId: existingUser.id },
+      update: { passwordHash, credentialType: 'PASSWORD' },
+      create: {
+        userId: existingUser.id,
+        credentialType: 'PASSWORD',
+        passwordHash,
+      },
+    });
+
+    // Restore ACTIVE status only if the account is in PENDING_VERIFICATION.
+    // Do not un-suspend a SUSPENDED account — that requires an admin decision.
+    if (existingUser.status === 'PENDING_VERIFICATION') {
+      await tx.user.update({
+        where: { id: existingUser.id },
+        data: { status: 'ACTIVE', emailVerified: true },
+      });
+    }
+
+    // Ensure the Patient profile record exists and is linked to this User.
+    if (!existingUser.patientProfile) {
+      await tx.patient.create({
+        data: {
+          userId: existingUser.id,
+          firstName: account.firstName,
+          lastName: account.lastName,
+          email,
+          age: account.age,
+          gender: account.gender,
+          isActive: true,
+        },
+      });
+    }
+  });
+
+  console.log(`  [updated]  ${email}  (PATIENT)`);
+}
+
 // ─── Entry Point ──────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -212,6 +350,10 @@ async function main(): Promise<void> {
 
   for (const account of accounts) {
     await provisionAccount(account);
+  }
+
+  for (const account of patientAccounts) {
+    await provisionPatientAccount(account);
   }
 
   console.log('\nProvisioning complete.');
