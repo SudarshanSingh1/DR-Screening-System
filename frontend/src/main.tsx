@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import './styles/index.css'
 
 // Catch-all for rendering errors visually
@@ -23,8 +24,9 @@ window.addEventListener('unhandledrejection', function (event) {
 });
 
 
+document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;top:0;left:0;width:50px;height:50px;background:blue;z-index:9999999;"></div>');
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary><App /></ErrorBoundary>
   </React.StrictMode>,
 )
