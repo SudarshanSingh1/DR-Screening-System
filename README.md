@@ -60,6 +60,7 @@
 - [Tech Stack](#tech-stack)
 - [Environment Variables](#environment-variables)
 - [Implementation Status](#implementation-status)
+- [SIH Presentation Login Credentials](#sih-presentation-login-credentials)
 - [Team](#team)
 
 ---
@@ -447,6 +448,30 @@ Never commit `.env` to version control. It is listed in `.gitignore`.
 | Simulink Resource Models | Complete | Available in `matlab/` |
 | Multi-image per eye | Planned | Macula + Optic disc views |
 | External Object Storage | Planned | AWS S3 migration for images |
+
+---
+
+## SIH Presentation Login Credentials
+
+These predefined accounts are available for controlled project testing, presentation recording, and SIH evaluation workflows. They use the application's normal authentication and role-based authorization system — the same login page, session handling, and RBAC middleware that governs all platform users.
+
+### Screening Staff
+
+| Account | Email | Password |
+|---|---|---|
+| Staff 1 | `screening.staff1@visionai.health` | `Vision@Staff1#2026` |
+| Staff 2 | `screening.staff2@visionai.health` | `Vision@Staff2#2026` |
+| Staff 3 | `screening.staff3@visionai.health` | `Vision@Staff3#2026` |
+
+### Doctor
+
+| Account | Email | Password |
+|---|---|---|
+| Doctor 1 | `doctor1@visionai.health` | `Vision@Doctor1#2026` |
+| Doctor 2 | `doctor2@visionai.health` | `Vision@Doctor2#2026` |
+| Doctor 3 | `doctor3@visionai.health` | `Vision@Doctor3#2026` |
+
+> These credentials are intended for controlled SIH presentation and project testing. Do not use them as permanent public-production credentials.
 
 ---
 
