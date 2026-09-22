@@ -1,6 +1,6 @@
 # Real Inference Pipeline
 
-This document describes the technically verified real DR screening inference pipeline.
+This document describes the technically verified real DR screening inference pipeline.    
 
 > **Label**: Technically verified real inference pipeline.
 > Clinical performance has not been validated against labeled patient data.
