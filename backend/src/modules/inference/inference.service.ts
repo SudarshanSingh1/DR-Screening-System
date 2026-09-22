@@ -7,7 +7,7 @@ const INFERENCE_SERVICE_URL = process.env.INFERENCE_SERVICE_URL || 'http://local
 // Inference can take time for a cold model load; default 60s
 const INFERENCE_TIMEOUT_MS = parseInt(process.env.INFERENCE_TIMEOUT_MS ?? '60000', 10);
 
-export async function analyzeImage(filePath: string, fileName: string, mimeType: string = 'application/octet-stream'): Promise<any> {
+export async function analyzeImage(filePath: string, fileName: string, mimeType: string = 'application/octet-stream', overrideClass?: number): Promise<any> {
   if (!fs.existsSync(filePath)) {
     throw Object.assign(new Error('Temp file not found for inference'), { status: 500, code: 'INTERNAL_ERROR' });
   }
@@ -17,6 +17,9 @@ export async function analyzeImage(filePath: string, fileName: string, mimeType:
     filename: fileName,
     contentType: mimeType,
   });
+  if (overrideClass !== undefined) {
+    formData.append('override_class', overrideClass.toString());
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), INFERENCE_TIMEOUT_MS);

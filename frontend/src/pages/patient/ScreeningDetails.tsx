@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import { ArrowLeft, FileText, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, FileText, CheckCircle, Clock, Download } from 'lucide-react';
+import { patientApi } from '../../services/api/patientApi';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 export const ScreeningDetails: React.FC = () => {
@@ -14,6 +15,21 @@ export const ScreeningDetails: React.FC = () => {
   const [screening, setScreening] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [downloadingInitial, setDownloadingInitial] = useState(false);
+
+  const handleDownloadInitial = async () => {
+    if (!id || downloadingInitial) return;
+    setDownloadingInitial(true);
+    try {
+      const url = await patientApi.generateInitialReport(id);
+      window.open(url, '_blank');
+    } catch (err) {
+      alert('Failed to generate initial report.');
+    } finally {
+      setDownloadingInitial(false);
+    }
+  };
+
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -73,11 +89,25 @@ export const ScreeningDetails: React.FC = () => {
               <h1 className="text-xl font-bold text-gray-900">{t('screening_details') || 'Screening Details'}</h1>
               <p className="text-sm text-gray-500 mt-1">{t('id')}: {screening.id}</p>
             </div>
-            <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
-               screening.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-             }`}>
-               {screening.status === 'COMPLETED' ? 'Completed' : 'In Progress'}
-            </span>
+            
+            <div className="flex items-center gap-3">
+              {screening.aiResult && (
+                <button 
+                  onClick={handleDownloadInitial}
+                  disabled={downloadingInitial}
+                  className="flex items-center text-sm bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full hover:bg-blue-100 font-medium transition-colors"
+                >
+                  <Download className="w-4 h-4 mr-1.5" />
+                  {downloadingInitial ? 'Generating...' : 'Initial AI Report'}
+                </button>
+              )}
+              <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
+                 screening.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+               }`}>
+                 {screening.status === 'COMPLETED' ? 'Completed' : 'In Progress'}
+              </span>
+            </div>
+
          </div>
 
          <div className="p-6">

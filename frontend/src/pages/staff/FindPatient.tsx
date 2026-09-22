@@ -50,8 +50,6 @@ export const FindPatient: React.FC = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
     
     if (!(query || "").trim()) {
-      executeSearch("");
-
       // Clear immediately if empty
       executeSearch('');
       return;

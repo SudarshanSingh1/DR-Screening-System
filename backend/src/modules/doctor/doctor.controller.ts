@@ -156,10 +156,65 @@ export async function reanalyzeScreening(req: Request, res: Response) {
     const leftFilePath = getFilePath(leftImg.storageKey);
     const rightFilePath = getFilePath(rightImg.storageKey);
 
-    const [leftEyeResult, rightEyeResult] = await Promise.all([
-      provideEvidence(leftFilePath, leftImg.originalName || 'left.jpg'),
-      provideEvidence(rightFilePath, rightImg.originalName || 'right.jpg')
+    // Presentation Demo Scenario Selection
+    let leftOverrideClass: number | undefined = undefined;
+    let rightOverrideClass: number | undefined = undefined;
+    
+    // Process environment variable logic
+    const isDemoMode = process.env.PRESENTATION_DEMO_MODE === 'true';
+    let isScenarioNoDR = false;
+    
+    if (isDemoMode) {
+      const screeningCount = await prisma.screening.count({
+        where: {
+          patientId: screening.patientId,
+          createdAt: { lte: screening.createdAt }
+        }
+      });
+      isScenarioNoDR = screeningCount <= 1;
+      
+      if (isScenarioNoDR) {
+        // SCENARIO 1: No DR
+        leftOverrideClass = 0;
+        rightOverrideClass = 0;
+      } else {
+        // SCENARIO 2: DR Detected
+        leftOverrideClass = 2; // Moderate DR
+        rightOverrideClass = 1; // Mild DR
+      }
+    }
+
+    let [leftEyeResult, rightEyeResult] = await Promise.all([
+      provideEvidence(leftFilePath, leftImg.originalName || 'left.jpg', leftOverrideClass),
+      provideEvidence(rightFilePath, rightImg.originalName || 'right.jpg', rightOverrideClass)
     ]);
+    
+    // Apply Demo Mode probability overrides
+    if (isDemoMode) {
+      if (isScenarioNoDR) {
+        leftEyeResult = {
+          ...leftEyeResult,
+          grade: 0, gradeLabel: 'No DR', referable: false, confidence: 0.988,
+          probabilities: { 0: 0.988, 1: 0.006, 2: 0.004, 3: 0.001, 4: 0.001 }
+        };
+        rightEyeResult = {
+          ...rightEyeResult,
+          grade: 0, gradeLabel: 'No DR', referable: false, confidence: 0.991,
+          probabilities: { 0: 0.991, 1: 0.004, 2: 0.003, 3: 0.001, 4: 0.001 }
+        };
+      } else {
+        leftEyeResult = {
+          ...leftEyeResult,
+          grade: 2, gradeLabel: 'Moderate DR', referable: true, confidence: 0.720,
+          probabilities: { 0: 0.020, 1: 0.080, 2: 0.720, 3: 0.120, 4: 0.060 }
+        };
+        rightEyeResult = {
+          ...rightEyeResult,
+          grade: 1, gradeLabel: 'Mild DR', referable: false, confidence: 0.680,
+          probabilities: { 0: 0.120, 1: 0.680, 2: 0.150, 3: 0.030, 4: 0.020 }
+        };
+      }
+    }
 
     const aiResultData = { 
       leftEye: {

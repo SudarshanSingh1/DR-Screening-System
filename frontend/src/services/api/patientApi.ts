@@ -73,6 +73,11 @@ export const patientApi = {
     }
   },
 
+  generateInitialReport: async (id: string): Promise<string> => {
+    const res = await fetchApi(`/screenings/${id}/report`, { method: 'POST' });
+    return res.data.reportUrl;
+  },
+
   getPatientNotifications: async (): Promise<Notification[]> => {
     return [];
   },

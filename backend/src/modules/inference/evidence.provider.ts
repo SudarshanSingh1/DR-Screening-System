@@ -22,11 +22,11 @@ const CLASS_NAMES = [
   "Proliferative DR"
 ];
 
-export async function provideEvidence(filePath: string, fileName: string): Promise<StructuredEvidence> {
+export async function provideEvidence(filePath: string, fileName: string, overrideClass?: number): Promise<StructuredEvidence> {
   const { analyzeImage } = await import('./inference.service');
   
   // Call the Python inference service
-  const result = await analyzeImage(filePath, fileName, 'image/jpeg');
+  const result = await analyzeImage(filePath, fileName, 'image/jpeg', overrideClass);
   
   if (!result || !result.success) {
     throw new Error('Inference failed to return success');

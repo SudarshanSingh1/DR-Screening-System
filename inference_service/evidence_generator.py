@@ -45,8 +45,10 @@ def generate_vessel_evidence(img_arr: np.ndarray) -> str:
     # Convert to uint8 (0 and 255)
     vessel_mask = (binary * 255).astype(np.uint8)
     
+    # We want pure white on pure black
     out_img = Image.fromarray(vessel_mask, mode='L')
-    return _to_b64(out_img)
+    out_rgb = out_img.convert('RGB')
+    return _to_b64(out_rgb)
 
 def generate_disc_fovea_evidence(img_arr: np.ndarray) -> str:
     # Very crude: optic disc is the brightest spot, fovea is the darkest spot in macular region

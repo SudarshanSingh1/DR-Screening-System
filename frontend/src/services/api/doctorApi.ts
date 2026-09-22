@@ -51,6 +51,13 @@ export const doctorApi = {
     return res.data;
   },
 
+  reanalyzeScreening: async (id: string) => {
+    const res = await fetchApi(`/screenings/${id}/analyze`, {
+      method: 'POST'
+    });
+    return res.data;
+  },
+
   getPatients: async () => {
     const res = await fetchApi('/patients');
     return res.data;

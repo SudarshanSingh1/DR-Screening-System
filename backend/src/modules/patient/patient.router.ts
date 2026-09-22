@@ -15,8 +15,9 @@ router.post('/profile/email/verify', requireSession, requireRole('patient'), val
 router.post('/profile/email/resend-verification', requireSession, requireRole('patient'), validate(ResendEmailVerificationSchema), resendEmailVerification);
 
 // Screenings
-import { getScreenings, getScreeningDetails } from './patient.controller';
+import { getScreenings, getScreeningDetails, generateInitialReport } from './patient.controller';
 router.get('/screenings', requireSession, requireRole('patient'), getScreenings);
 router.get('/screenings/:id', requireSession, requireRole('patient'), getScreeningDetails);
+router.post('/screenings/:id/report', requireSession, requireRole('patient'), generateInitialReport);
 
 export { router as patientRouter };

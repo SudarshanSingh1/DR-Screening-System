@@ -281,6 +281,7 @@ export const DoctorReview: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -292,6 +293,20 @@ export const DoctorReview: React.FC = () => {
       setError(err.message ?? 'Failed to load screening.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!id) return;
+    setAnalyzing(true);
+    setSubmitError(null);
+    try {
+      await doctorApi.reanalyzeScreening(id);
+      await load();
+    } catch (err: any) {
+      setSubmitError(err.message || 'Failed to analyze screening');
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -367,14 +382,25 @@ export const DoctorReview: React.FC = () => {
             Review AI screening results and provide your clinical assessment.
           </p>
         </div>
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
-          isCompleted
-            ? 'bg-green-50 text-green-700 ring-1 ring-green-200'
-            : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-        }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${isCompleted ? 'bg-green-500' : 'bg-amber-500'}`} />
-          {isCompleted ? 'Completed' : 'Pending Review'}
-        </span>
+        <div className="flex flex-col items-end gap-2">
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
+            isCompleted
+              ? 'bg-green-50 text-green-700 ring-1 ring-green-200'
+              : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isCompleted ? 'bg-green-500' : 'bg-amber-500'}`} />
+            {isCompleted ? 'COMPLETED' : 'PENDING REVIEW'}
+          </span>
+          {!isCompleted && (
+            <button 
+              onClick={handleAnalyze} 
+              disabled={analyzing}
+              className="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 font-medium rounded-lg hover:bg-blue-100 disabled:opacity-50 transition-colors"
+            >
+              {analyzing ? 'Analyzing...' : 'Re-run AI Analysis'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Patient Information ──────────────────────────────────────────────── */}

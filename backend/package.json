@@ -48,6 +48,7 @@
     "@types/nodemailer": "^6.4.17",
     "@types/pdfkit": "^0.17.6",
     "prisma": "^6.7.0",
+    "ts-node": "^10.9.2",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }

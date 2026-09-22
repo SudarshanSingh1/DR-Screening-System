@@ -114,3 +114,46 @@ export async function getScreeningDetails(req: Request, res: Response): Promise<
     handleError(err, res);
   }
 }
+
+export async function generateInitialReport(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.session.user?.id;
+    if (!userId) throw Object.assign(new Error('Not authenticated'), { status: 401 });
+
+    const { getScreeningDetails: getDetails } = await import('./patient.screening.service');
+    const screening = await getDetails(userId, req.params.id as string);
+
+    if (!screening.aiResult) {
+      throw Object.assign(new Error('Screening has not been analyzed yet'), { status: 400 });
+    }
+
+    const { getFilePath } = await import('../../utils/storage');
+    const { generateInitialReferralPDF } = await import('../../utils/pdf');
+    const path = await import('path');
+    const fs = await import('fs');
+
+    const reportKey = `reports/referral-patient-${screening.id}-${Date.now()}.pdf`;
+    const pdfPath = getFilePath(reportKey);
+    const reportDir = path.dirname(pdfPath);
+    if (!fs.existsSync(reportDir)) {
+      fs.mkdirSync(reportDir, { recursive: true });
+    }
+
+    // Pass screening.initiatingStaff?.staffProfile if it exists, otherwise empty
+    let staffProfile = null;
+    if ((screening as any).initiatingStaff?.staffProfile) {
+      staffProfile = (screening as any).initiatingStaff.staffProfile;
+    }
+
+    await generateInitialReferralPDF(screening, screening.patient, staffProfile, pdfPath);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        reportUrl: `/api/storage/${reportKey}`
+      }
+    });
+  } catch (err) {
+    handleError(err, res);
+  }
+}

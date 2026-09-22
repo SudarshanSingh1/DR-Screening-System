@@ -33,7 +33,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import JSONResponse
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
@@ -63,7 +63,7 @@ class InferenceProvider(ABC):
     def is_ready(self) -> bool: ...
 
     @abstractmethod
-    def predict_eye(self, image_rgb_uint8: np.ndarray) -> dict:
+    def predict_eye(self, image_rgb_uint8: np.ndarray, override_class: int = None) -> dict:
         """
         Args:
             image_rgb_uint8: (H, W, 3) uint8 ndarray (already 224×224)
@@ -216,7 +216,7 @@ class PythonV2Provider(InferenceProvider):
         Image.fromarray(overlay_uint8, mode="RGB").save(buf, format="PNG")
         return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
 
-    def predict_eye(self, image_rgb_uint8: np.ndarray) -> dict:
+    def predict_eye(self, image_rgb_uint8: np.ndarray, override_class: int = None) -> dict:
         if not self.is_ready():
             raise RuntimeError(f"Provider not ready: {self._error}")
 
@@ -248,8 +248,9 @@ class PythonV2Provider(InferenceProvider):
         is_referable      = bool(ref_prob >= referable_threshold)
         is_low_confidence = bool(max_prob < confidence_threshold)
 
-        # Grad-CAM
-        gradcam_b64 = self._compute_gradcam(img_tensor, image_rgb_uint8, class_idx)
+        # Grad-CAM (Use override_class if provided for demo mode)
+        target_cam_idx = override_class if override_class is not None else class_idx
+        gradcam_b64 = self._compute_gradcam(img_tensor, image_rgb_uint8, target_cam_idx)
 
         return {
             "classIndex":      class_idx,
@@ -343,13 +344,13 @@ def _load_image(upload: UploadFile) -> np.ndarray:
     return np.array(img, dtype=np.uint8)
 
 
-def _run_eye(label: str, upload: UploadFile) -> dict:
+def _run_eye(label: str, upload: UploadFile, override_class: int = None) -> dict:
     """Helper that runs full inference on a single eye upload."""
     img_arr = _load_image(upload)
     try:
         from evidence_generator import generate_quality_evidence, generate_vessel_evidence, generate_disc_fovea_evidence, generate_lesion_evidence
         
-        result = _provider.predict_eye(img_arr)
+        result = _provider.predict_eye(img_arr, override_class)
         
         # Also generate the additional evidence formats from the original image array
         quality_evidence = generate_quality_evidence(img_arr)
@@ -408,7 +409,7 @@ async def analyze_bilateral(
 
 # Keep legacy single-image endpoint for backward compatibility
 @app.post("/analyze/single")
-async def analyze_single(file: UploadFile = File(...)):
+async def analyze_single(file: UploadFile = File(...), override_class: int = Form(None)):
     """
     Legacy single-image endpoint (backward compatibility).
     Returns the same response structure as a single eye.
@@ -419,7 +420,7 @@ async def analyze_single(file: UploadFile = File(...)):
             detail=f"{_startup_error.get('code')}: {_startup_error.get('message')}",
         )
 
-    result = _run_eye("Image", file)
+    result = _run_eye("Image", file, override_class)
     # Flatten to match legacy response shape
     return {
         "success": True,

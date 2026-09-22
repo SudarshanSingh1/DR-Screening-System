@@ -16,13 +16,21 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Try to read from localStorage first, default to 'en'
   const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem('preferredLanguage');
-    return (saved === 'hi' || saved === 'en') ? saved : 'en';
+    try {
+      const saved = localStorage.getItem('preferredLanguage');
+      return (saved === 'hi' || saved === 'en') ? saved : 'en';
+    } catch (e) {
+      return 'en';
+    }
   });
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem('preferredLanguage', lang);
+    try {
+      localStorage.setItem('preferredLanguage', lang);
+    } catch (e) {
+      // Ignore
+    }
   };
 
   const t = (key: keyof Dictionary): string => {
