@@ -9,12 +9,15 @@ import {
 } from 'lucide-react';
 
 
+import { LogOut } from 'lucide-react';
+
 interface StaffSidebarProps {
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  onLogout: () => void;
 }
 
-export const StaffSidebar: React.FC<StaffSidebarProps> = ({ mobileOpen, setMobileOpen }) => {
+export const StaffSidebar: React.FC<StaffSidebarProps> = ({ mobileOpen, setMobileOpen, onLogout }) => {
 
   const navGroups = [
     {
@@ -26,7 +29,7 @@ export const StaffSidebar: React.FC<StaffSidebarProps> = ({ mobileOpen, setMobil
     {
       title: 'Patient Management',
       items: [
-        { label: 'Find Patient', icon: Search, path: '/staff/patients/search' },
+        { label: 'Find Patient', icon: Search, path: '/staff/patients' },
         { label: 'Register Patient', icon: UserPlus, path: '/staff/patients/register' }
       ]
     },
@@ -98,6 +101,16 @@ export const StaffSidebar: React.FC<StaffSidebarProps> = ({ mobileOpen, setMobil
           </div>
         ))}
       </nav>
+      
+      <div className="p-4 border-t border-gray-200">
+        <button
+          onClick={onLogout}
+          className="flex w-full items-center px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+        >
+          <LogOut className="mr-3 h-5 w-5" />
+          Logout
+        </button>
+      </div>
     </div>
   );
 

@@ -347,7 +347,16 @@ def _run_eye(label: str, upload: UploadFile) -> dict:
     """Helper that runs full inference on a single eye upload."""
     img_arr = _load_image(upload)
     try:
+        from evidence_generator import generate_quality_evidence, generate_vessel_evidence, generate_disc_fovea_evidence, generate_lesion_evidence
+        
         result = _provider.predict_eye(img_arr)
+        
+        # Also generate the additional evidence formats from the original image array
+        quality_evidence = generate_quality_evidence(img_arr)
+        vessel_evidence = generate_vessel_evidence(img_arr)
+        disc_fovea_evidence = generate_disc_fovea_evidence(img_arr)
+        lesion_evidence = generate_lesion_evidence(img_arr)
+        
         return {
             "success": True,
             "prediction": {
@@ -359,6 +368,10 @@ def _run_eye(label: str, upload: UploadFile) -> dict:
             "isReferable":     result["isReferable"],
             "isLowConfidence": result["isLowConfidence"],
             "gradCam":         result["gradCam"],
+            "qualityEvidence": quality_evidence,
+            "vesselEvidence":  vessel_evidence,
+            "discFoveaEvidence": disc_fovea_evidence,
+            "lesionEvidence":  lesion_evidence,
         }
     except Exception as e:
         traceback.print_exc()
@@ -415,4 +428,8 @@ async def analyze_single(file: UploadFile = File(...)):
         "isReferable":     result["isReferable"],
         "isLowConfidence": result["isLowConfidence"],
         "gradCam":         result["gradCam"],
+        "qualityEvidence": result.get("qualityEvidence"),
+        "vesselEvidence":  result.get("vesselEvidence"),
+        "discFoveaEvidence": result.get("discFoveaEvidence"),
+        "lesionEvidence":  result.get("lesionEvidence")
     }

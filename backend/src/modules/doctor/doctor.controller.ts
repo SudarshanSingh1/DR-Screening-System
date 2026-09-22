@@ -60,7 +60,9 @@ export async function getScreeningDetails(req: Request, res: Response) {
 
 const ReviewSchema = z.object({
   doctorDecision: z.enum(['DR_DETECTED', 'NO_DR_DETECTED']),
-  clinicalNotes: z.string().optional()
+  clinicalNotes: z.string().optional(),
+  recommendation: z.string().optional(),
+  followUp: z.string().optional()
 });
 
 export async function submitReview(req: Request, res: Response) {
@@ -70,7 +72,7 @@ export async function submitReview(req: Request, res: Response) {
       throw Object.assign(new Error('Unauthorized'), { status: 401 });
     }
 
-    const { doctorDecision, clinicalNotes } = ReviewSchema.parse(req.body);
+    const { doctorDecision, clinicalNotes, recommendation, followUp } = ReviewSchema.parse(req.body);
     const screeningId = req.params.id as string;
 
     // Verify screening exists and is authorized for this doctor
@@ -91,7 +93,7 @@ export async function submitReview(req: Request, res: Response) {
       }
 
       const review = await tx.clinicalReview.create({
-        data: { screeningId, reviewerId: userId, doctorDecision, clinicalNotes }
+        data: { screeningId, reviewerId: userId, doctorDecision, clinicalNotes, recommendation, followUp }
       });
 
       await tx.screening.update({
@@ -132,6 +134,73 @@ export async function submitReview(req: Request, res: Response) {
     handleError(err, res);
   }
 }
+
+export async function reanalyzeScreening(req: Request, res: Response) {
+  try {
+    const userId = req.session.user?.id;
+    if (!userId || req.session.user?.role !== 'doctor') {
+      throw Object.assign(new Error('Unauthorized'), { status: 401 });
+    }
+
+    const screeningId = req.params.id as string;
+    const screening = await doctorService.getScreeningDetails(userId, screeningId);
+
+    const leftImg = screening.images.find(img => img.eye === 'LEFT');
+    const rightImg = screening.images.find(img => img.eye === 'RIGHT');
+
+    if (!leftImg || !rightImg || !leftImg.storageKey || !rightImg.storageKey) {
+      throw Object.assign(new Error('Original images not found for this screening'), { status: 400 });
+    }
+
+    const { provideEvidence } = await import('../inference/evidence.provider');
+    const leftFilePath = getFilePath(leftImg.storageKey);
+    const rightFilePath = getFilePath(rightImg.storageKey);
+
+    const [leftEyeResult, rightEyeResult] = await Promise.all([
+      provideEvidence(leftFilePath, leftImg.originalName || 'left.jpg'),
+      provideEvidence(rightFilePath, rightImg.originalName || 'right.jpg')
+    ]);
+
+    const aiResultData = { 
+      leftEye: {
+        prediction: { classIndex: leftEyeResult.grade, label: leftEyeResult.gradeLabel, confidence: leftEyeResult.confidence },
+        probabilities: leftEyeResult.probabilities,
+        isReferable: leftEyeResult.referable,
+        gradCam: leftEyeResult.gradCamEvidence,
+        vesselEvidence: leftEyeResult.vesselEvidence,
+        discFoveaEvidence: leftEyeResult.discFoveaEvidence,
+        lesionEvidence: leftEyeResult.lesionEvidence,
+        gradCamEvidence: leftEyeResult.gradCamEvidence
+      }, 
+      rightEye: {
+        prediction: { classIndex: rightEyeResult.grade, label: rightEyeResult.gradeLabel, confidence: rightEyeResult.confidence },
+        probabilities: rightEyeResult.probabilities,
+        isReferable: rightEyeResult.referable,
+        gradCam: rightEyeResult.gradCamEvidence,
+        vesselEvidence: rightEyeResult.vesselEvidence,
+        discFoveaEvidence: rightEyeResult.discFoveaEvidence,
+        lesionEvidence: rightEyeResult.lesionEvidence,
+        gradCamEvidence: rightEyeResult.gradCamEvidence
+      } 
+    };
+
+    await prisma.screening.update({
+      where: { id: screeningId },
+      data: {
+        aiResult: aiResultData as any
+      }
+    });
+
+    res.status(200).json({ 
+      success: true, 
+      data: aiResultData
+    });
+
+  } catch (err) {
+    handleError(err, res);
+  }
+}
+
 
 
 export async function getPatients(req: Request, res: Response) {

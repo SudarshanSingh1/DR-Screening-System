@@ -43,10 +43,10 @@ export const doctorApi = {
     return res.data;
   },
 
-  submitReview: async (id: string, decision: 'DR_DETECTED' | 'NO_DR_DETECTED', notes?: string) => {
+  submitReview: async (id: string, decision: 'DR_DETECTED' | 'NO_DR_DETECTED', notes?: string, recommendation?: string, followUp?: string) => {
     const res = await fetchApi(`/screenings/${id}/review`, {
       method: 'POST',
-      body: JSON.stringify({ doctorDecision: decision, clinicalNotes: notes })
+      body: JSON.stringify({ doctorDecision: decision, clinicalNotes: notes, recommendation, followUp })
     });
     return res.data;
   },

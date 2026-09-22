@@ -441,6 +441,8 @@ model ClinicalReview {
   reviewerId     String
   doctorDecision DoctorDecision
   clinicalNotes  String?        @db.Text
+  recommendation String?        @db.Text
+  followUp       String?        @db.Text
   reviewedAt     DateTime       @default(now())
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt

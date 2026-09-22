@@ -20,6 +20,7 @@ import { PatientSettings } from './pages/patient/PatientSettings';
 import { StaffLayout } from './components/staff/StaffLayout';
 import { StaffDashboard } from './pages/staff/StaffDashboard';
 import { FindPatient } from './pages/staff/FindPatient';
+import { PatientDetails } from './pages/staff/PatientDetails';
 import { RegisterPatient } from './pages/staff/RegisterPatient';
 import { NewScreeningWorkspace } from './pages/staff/workspace/NewScreeningWorkspace';
 import { ScreeningResult } from './pages/staff/workspace/ScreeningResult';
@@ -47,11 +48,13 @@ import { DoctorNotifications } from './pages/doctor/DoctorNotifications';
 
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { GlobalErrorBoundary } from './components/common/GlobalErrorBoundary';
 
 function App() {
   return (
     <ToastProvider>
       <LanguageProvider>
+        <GlobalErrorBoundary>
         <BrowserRouter>
         <Routes>
         <Route path="/" element={<LandingPage />} />
@@ -96,7 +99,9 @@ function App() {
            <Route index element={<Navigate to="dashboard" replace />} />
            <Route path="dashboard" element={<StaffDashboard />} />
            
-           <Route path="patients/search" element={<FindPatient />} />
+           <Route path="patients" element={<FindPatient />} />
+           <Route path="patients/:id" element={<PatientDetails />} />
+           <Route path="patients/search" element={<Navigate to="/staff/patients" replace />} />
            <Route path="patients/register" element={<RegisterPatient />} />
            
            <Route path="screenings/new" element={<NewScreeningWorkspace />} />
@@ -126,6 +131,7 @@ function App() {
         <Route path="/platform-feedback" element={<PlatformFeedback />} />
       </Routes>
       </BrowserRouter>
+        </GlobalErrorBoundary>
       </LanguageProvider>
     </ToastProvider>
   );

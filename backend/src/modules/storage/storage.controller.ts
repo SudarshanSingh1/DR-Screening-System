@@ -5,8 +5,8 @@ import { prisma } from '../../db/prisma';
 
 export async function getFile(req: Request, res: Response): Promise<void> {
   try {
-    const { folder, filename } = req.params;
-    const key = folder && filename ? `${folder}/${filename}` : req.params.key as string;
+    const keyVal = req.params[0] || req.params.key;
+    const key = Array.isArray(keyVal) ? keyVal.join('/') : (keyVal as string);
 
     if (!key) {
       res.status(400).json({ success: false, error: 'Key is required' });
@@ -27,22 +27,27 @@ export async function getFile(req: Request, res: Response): Promise<void> {
 
     // ── Report access authorization ─────────────────────────────────────────
     if (key.startsWith('reports/')) {
-      const report = await prisma.clinicalReport.findFirst({
-        where: { storageKey: key },
-        include: {
-          screening: {
-            include: { patient: true }
-          },
-          review: true
-        }
-      });
-
-      if (!report) {
-        res.status(404).json({ success: false, error: 'File not found' });
-        return;
-      }
-
       const role = user.role;
+      if (key.includes('referral-')) {
+         if (role === 'patient') {
+            res.status(403).json({ success: false, error: 'Forbidden' });
+            return;
+         }
+      } else {
+          const report = await prisma.clinicalReport.findFirst({
+            where: { storageKey: key },
+            include: {
+              screening: {
+                include: { patient: true }
+              },
+              review: true
+            }
+          });
+
+          if (!report) {
+            res.status(404).json({ success: false, error: 'File not found' });
+            return;
+          }
 
       if (role === 'patient') {
         // Patient can only access their own report
@@ -100,6 +105,7 @@ export async function getFile(req: Request, res: Response): Promise<void> {
         res.status(403).json({ success: false, error: 'Forbidden' });
         return;
       }
+      }
     }
 
     // ── Image access authorization ───────────────────────────────────────────
@@ -124,6 +130,7 @@ export async function getFile(req: Request, res: Response): Promise<void> {
 
     res.sendFile(filePath);
   } catch (err) {
+    console.error("STORAGE CONTROLLER ERROR:", err);
     res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 }

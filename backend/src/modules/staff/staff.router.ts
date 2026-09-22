@@ -35,6 +35,7 @@ router.post('/screenings/:id/analyze', upload.fields([
   { name: 'rightEyeImage', maxCount: 1 }
 ]), analyzeScreening);
 router.get('/screenings/:id/result', getScreeningResult);
+router.post('/screenings/:id/referral-report', require('..'+'/screening/screening.controller').generateReferralReport);
 
 router.get('/referrals', getReferrals);
 router.post('/referrals', createReferral);

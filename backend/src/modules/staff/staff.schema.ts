@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const PatientSearchSchema = z.object({
-  q: z.string().min(1, 'Search query is required').max(100, 'Search query is too long'),
+  q: z.string().max(100, 'Search query is too long').optional().default(''),
 });
 
 export type PatientSearchQuery = z.infer<typeof PatientSearchSchema>;

@@ -43,7 +43,24 @@ export async function getStaffProfile(userId: string) {
   };
 }
 
-export async function searchPatients(query: string) {
+export async function searchPatients(query: string = '') {
+  if (!query || !query.trim()) {
+    return await prisma.patient.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        age: true,
+        gender: true,
+        phone: true,
+        email: true,
+        aadhaarReference: true
+      }
+    });
+  }
+
   // Support multi-word name searches (e.g. "First Last")
   const terms = query.trim().split(/\s+/).filter(Boolean);
   

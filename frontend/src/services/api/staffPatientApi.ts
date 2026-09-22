@@ -3,7 +3,7 @@ import { fetchApi } from './staffApi';
 
 export const staffPatientApi = {
   searchPatients: async (query: string, options?: RequestInit): Promise<PatientSummaryForStaff[]> => {
-    if (!query) return [];
+    
     try {
       const res = await fetchApi(`/patients/search?q=${encodeURIComponent(query)}`, options);
       return res.data || [];

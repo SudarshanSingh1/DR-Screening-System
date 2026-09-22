@@ -1,14 +1,15 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, ClipboardList, MessageSquare, Bell, User, Settings, HelpCircle, X } from 'lucide-react';
+import { Home, ClipboardList, MessageSquare, Bell, User, Settings, HelpCircle, X, LogOut } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PatientSidebarProps {
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  onLogout: () => void;
 }
 
-export const PatientSidebar: React.FC<PatientSidebarProps> = ({ mobileOpen, setMobileOpen }) => {
+export const PatientSidebar: React.FC<PatientSidebarProps> = ({ mobileOpen, setMobileOpen, onLogout }) => {
   const { t } = useLanguage();
 
   const navItems = [
@@ -55,7 +56,7 @@ export const PatientSidebar: React.FC<PatientSidebarProps> = ({ mobileOpen, setM
         })}
       </nav>
       <div className="p-4 border-t border-gray-200">
-        <div className="bg-blue-50 p-4 rounded-xl text-center">
+        <div className="bg-blue-50 p-4 rounded-xl text-center mb-4">
           <div className="mx-auto bg-white w-10 h-10 rounded-full flex items-center justify-center mb-3 shadow-sm">
              <HelpCircle className="h-5 w-5 text-blue-600" />
           </div>
@@ -65,6 +66,14 @@ export const PatientSidebar: React.FC<PatientSidebarProps> = ({ mobileOpen, setM
             {t('get_support')}
           </button>
         </div>
+        
+        <button
+          onClick={onLogout}
+          className="flex w-full items-center px-4 py-3 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+        >
+          <LogOut className="mr-3 h-5 w-5" />
+          Logout
+        </button>
       </div>
     </div>
   );

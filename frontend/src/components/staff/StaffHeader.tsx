@@ -23,7 +23,7 @@ export const StaffHeader: React.FC<StaffHeaderProps> = ({ onMenuClick }) => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/staff/patients/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      navigate(`/staff/patients?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 

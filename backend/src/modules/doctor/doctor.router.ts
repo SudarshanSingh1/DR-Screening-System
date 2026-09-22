@@ -13,6 +13,7 @@ doctorRouter.get('/dashboard', doctorController.getDashboardMetrics);
 doctorRouter.get('/reviews/pending', doctorController.getPendingReviews);
 doctorRouter.get('/reviews/completed', doctorController.getCompletedReviews);
 doctorRouter.get('/screenings/:id', doctorController.getScreeningDetails);
+doctorRouter.post('/screenings/:id/analyze', doctorController.reanalyzeScreening);
 doctorRouter.post('/screenings/:id/review', doctorController.submitReview);
 doctorRouter.get('/patients', doctorController.getPatients);
 doctorRouter.get('/reports', doctorController.getReports);

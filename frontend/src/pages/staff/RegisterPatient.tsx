@@ -33,7 +33,7 @@ export const RegisterPatient: React.FC = () => {
       setFormData({ firstName: '', lastName: '', age: undefined, gender: '', phone: '', email: '', aadhaarReference: '' });
       
       // Leave plenty of time for toast to be read before navigating
-      setTimeout(() => navigate('/staff/patients/search'), 3000);
+      navigate(`/staff/patients/${res.id}`);
     } catch (err: any) {
       toast.error(err.message || 'Registration failed');
     } finally {

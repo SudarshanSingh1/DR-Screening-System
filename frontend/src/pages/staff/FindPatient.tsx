@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { staffPatientApi } from '../../services/api/staffPatientApi';
 import type { PatientSummaryForStaff } from '../../types/staff';
 import { Search, Loader2 } from 'lucide-react';
 
 export const FindPatient: React.FC = () => {
-  const [query, setQuery] = useState('');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get("q") || "");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<PatientSummaryForStaff[] | null>(null);
   const [error, setError] = useState('');
@@ -18,12 +21,7 @@ export const FindPatient: React.FC = () => {
       abortControllerRef.current.abort();
     }
     
-    if (!searchQuery.trim()) {
-      setResults(null);
-      setError('');
-      setLoading(false);
-      return;
-    }
+    // Empty query is now allowed to fetch recent patients
 
     setLoading(true);
     setError('');
@@ -51,20 +49,27 @@ export const FindPatient: React.FC = () => {
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     
-    if (!query.trim()) {
+    if (!(query || "").trim()) {
+      executeSearch("");
+
       // Clear immediately if empty
       executeSearch('');
       return;
     }
 
     timerRef.current = window.setTimeout(() => {
-      executeSearch(query);
+      executeSearch(query || "");
     }, 300);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [query, executeSearch]);
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q !== null) setQuery(q);
+  }, [searchParams]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -76,7 +81,7 @@ export const FindPatient: React.FC = () => {
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (timerRef.current) clearTimeout(timerRef.current);
-    executeSearch(query);
+    executeSearch(query || "");
   };
 
   return (
@@ -120,8 +125,8 @@ export const FindPatient: React.FC = () => {
                 </div>
               </div>
               <div className="mt-5 flex gap-3">
-                <button className="flex-1 bg-gray-50 border border-gray-200 py-2 rounded-lg text-sm font-medium hover:bg-gray-100">View Profile</button>
-                <button className="flex-1 bg-blue-50 text-blue-700 py-2 rounded-lg text-sm font-medium hover:bg-blue-100">Start Screening</button>
+                <button onClick={() => navigate(`/staff/patients/${p.id}`)} className="flex-1 bg-gray-50 border border-gray-200 py-2 rounded-lg text-sm font-medium hover:bg-gray-100">View Profile</button>
+                <button onClick={() => navigate('/staff/screenings/new', { state: { patient: p } })} className="flex-1 bg-blue-50 text-blue-700 py-2 rounded-lg text-sm font-medium hover:bg-blue-100">Start Screening</button>
               </div>
             </div>
           ))}

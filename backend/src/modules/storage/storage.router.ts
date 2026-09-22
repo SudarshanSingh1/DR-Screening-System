@@ -5,4 +5,5 @@ import { requireSession } from '../../middleware/auth.middleware';
 export const storageRouter = Router();
 
 // Only authenticated users can access stored files (reports, images)
-storageRouter.get('/:folder/:filename', requireSession, getFile);
+storageRouter.get('/*key', requireSession, getFile);
+

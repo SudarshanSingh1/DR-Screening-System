@@ -52,7 +52,14 @@ export interface EyeInferenceResult {
   probabilities: number[];
   isReferable: boolean;
   isLowConfidence: boolean;
-  gradCam: string;
+  gradCam?: string;
+  evidence?: {
+    quality?: { image: string, label: string };
+    vessel?: { image: string, label: string };
+    discFovea?: { image: string, label: string };
+    lesion?: { image: string, label: string };
+    gradCam?: { image: string, label: string };
+  };
 }
 
 export interface BilateralInferenceResult {

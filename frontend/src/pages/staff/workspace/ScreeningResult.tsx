@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, AlertCircle, Info, Activity, FileText } from 'lucide-react';
 
+import { EvidenceImageViewer } from '../../../components/common/EvidenceImageViewer';
 import { LoadingState } from '../../../components/common/LoadingState';
 import { ErrorState } from '../../../components/common/ErrorState';
 import type { BilateralInferenceResult, EyeInferenceResult } from '../../../types/staff';
@@ -30,6 +31,7 @@ export const ScreeningResult: React.FC = () => {
   } : null);
   const [loading, setLoading] = useState(!state?.result && Boolean(id));
   const [error, setError] = useState<string | null>(null);
+  const [viewerState, setViewerState] = useState<{isOpen: boolean, url: string, title: string}>({isOpen: false, url: '', title: ''});
 
   useEffect(() => {
     if (state?.result || !id) {
@@ -86,7 +88,7 @@ export const ScreeningResult: React.FC = () => {
 
   const renderEyeResult = (title: string, eyeResult: EyeInferenceResult, originalUrl?: string) => {
     if (!eyeResult) return <div className="p-4 text-gray-500">No data available.</div>;
-    const { prediction, probabilities, isLowConfidence, gradCam, isReferable } = eyeResult;
+    const { prediction, probabilities, isLowConfidence, isReferable } = eyeResult;
 
     const CLASS_NAMES: Record<number, string> = {
       0: 'No DR',
@@ -162,37 +164,66 @@ export const ScreeningResult: React.FC = () => {
           </div>
         )}
 
-        {/* Images */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-100">
-              <p className="text-sm font-bold text-gray-700">Original Fundus Image</p>
+        {/* Presentation Evidence Images */}
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {/* 1. Original */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="px-3 py-2 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <p className="text-xs font-bold text-gray-700">Original</p>
+              {originalUrl && <button onClick={() => setViewerState({isOpen: true, url: originalUrl, title: title + ' - Original Fundus Image'})} className="text-xs text-blue-600 hover:text-blue-800 font-medium" title="View full image">View</button>}
             </div>
-            <div className="p-4 flex items-center justify-center bg-gray-900 h-64">
-              {originalUrl ? (
-                <img src={originalUrl} alt={`${title} original`} className="max-h-full object-contain rounded" />
-              ) : (
-                <div className="text-center text-gray-400">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                  <p className="text-xs">Preview unavailable</p>
-                </div>
-              )}
+            <div className="p-2 flex items-center justify-center bg-gray-900 h-32 flex-1">
+              {originalUrl ? <img src={originalUrl} alt="Original" className="max-h-full object-contain rounded" /> : <p className="text-xs text-gray-400">N/A</p>}
             </div>
           </div>
-
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-100">
-              <p className="text-sm font-bold text-gray-700">Grad-CAM Attention</p>
+          {/* 1.5 Quality */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="px-3 py-2 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <p className="text-xs font-bold text-gray-700">Quality</p>
+              {eyeResult?.evidence?.quality?.image && <button onClick={() => setViewerState({isOpen: true, url: eyeResult?.evidence?.quality?.image || '', title: title + ' - Image Quality'})} className="text-xs text-blue-600 hover:text-blue-800 font-medium" title="View full image">View</button>}
             </div>
-            <div className="p-4 flex items-center justify-center bg-gray-900 h-64">
-              {gradCam ? (
-                <img src={gradCam.startsWith('data:') ? gradCam : `data:image/jpeg;base64,${gradCam}`} alt={`${title} Grad-CAM`} className="max-h-full object-contain rounded" />
-              ) : (
-                <div className="text-center text-gray-400">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                  <p className="text-xs">Visualization unavailable</p>
-                </div>
-              )}
+            <div className="p-2 flex items-center justify-center bg-gray-900 h-32 flex-1">
+              {eyeResult?.evidence?.quality?.image ? <img src={eyeResult?.evidence?.quality?.image} alt="Quality" className="max-h-full object-contain rounded" /> : <p className="text-xs text-gray-400">N/A</p>}
+            </div>
+          </div>
+          {/* 2. Vessel */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="px-3 py-2 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <p className="text-xs font-bold text-gray-700">Vessel</p>
+              {eyeResult?.evidence?.vessel?.image && <button onClick={() => setViewerState({isOpen: true, url: eyeResult?.evidence?.vessel?.image || '', title: title + ' - Retinal Vessel Segmentation'})} className="text-xs text-blue-600 hover:text-blue-800 font-medium" title="View full image">View</button>}
+            </div>
+            <div className="p-2 flex items-center justify-center bg-gray-900 h-32 flex-1">
+              {eyeResult?.evidence?.vessel?.image ? <img src={eyeResult?.evidence?.vessel?.image} alt="Vessel" className="max-h-full object-contain rounded" /> : <p className="text-xs text-gray-400">N/A</p>}
+            </div>
+          </div>
+          {/* 3. Disc/Fovea */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="px-3 py-2 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <p className="text-xs font-bold text-gray-700">Disc/Fovea</p>
+              {eyeResult?.evidence?.discFovea?.image && <button onClick={() => setViewerState({isOpen: true, url: eyeResult?.evidence?.discFovea?.image || '', title: title + ' - Optic Disc + Fovea'})} className="text-xs text-blue-600 hover:text-blue-800 font-medium" title="View full image">View</button>}
+            </div>
+            <div className="p-2 flex items-center justify-center bg-gray-900 h-32 flex-1">
+              {eyeResult?.evidence?.discFovea?.image ? <img src={eyeResult?.evidence?.discFovea?.image} alt="Disc/Fovea" className="max-h-full object-contain rounded" /> : <p className="text-xs text-gray-400">N/A</p>}
+            </div>
+          </div>
+          {/* 4. Lesion */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="px-3 py-2 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <p className="text-xs font-bold text-gray-700">Lesion Map</p>
+              {eyeResult?.evidence?.lesion?.image && <button onClick={() => setViewerState({isOpen: true, url: eyeResult?.evidence?.lesion?.image || '', title: title + ' - Lesion Map'})} className="text-xs text-blue-600 hover:text-blue-800 font-medium" title="View full image">View</button>}
+            </div>
+            <div className="p-2 flex items-center justify-center bg-gray-900 h-32 flex-1">
+              {eyeResult?.evidence?.lesion?.image ? <img src={eyeResult?.evidence?.lesion?.image} alt="Lesion" className="max-h-full object-contain rounded" /> : <p className="text-xs text-gray-400">N/A</p>}
+            </div>
+          </div>
+          {/* 5. Grad-CAM */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="px-3 py-2 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <p className="text-xs font-bold text-gray-700">Grad-CAM</p>
+              {eyeResult?.evidence?.gradCam?.image && <button onClick={() => setViewerState({isOpen: true, url: eyeResult?.evidence?.gradCam?.image?.startsWith('data:') || eyeResult?.evidence?.gradCam?.image?.startsWith('/') ? eyeResult?.evidence?.gradCam?.image || '' : `data:image/jpeg;base64,${eyeResult?.evidence?.gradCam?.image || ''}`, title: title + ' - Grad-CAM Attention'})} className="text-xs text-blue-600 hover:text-blue-800 font-medium" title="View full image">View</button>}
+            </div>
+            <div className="p-2 flex items-center justify-center bg-gray-900 h-32 flex-1">
+              {eyeResult?.evidence?.gradCam?.image ? <img src={eyeResult?.evidence?.gradCam?.image?.startsWith('data:') || eyeResult?.evidence?.gradCam?.image?.startsWith('/') ? eyeResult?.evidence?.gradCam?.image || '' : `data:image/jpeg;base64,${eyeResult?.evidence?.gradCam?.image || ''}`} alt="Grad-CAM" className="max-h-full object-contain rounded" /> : <p className="text-xs text-gray-400">N/A</p>}
             </div>
           </div>
         </div>
@@ -201,7 +232,14 @@ export const ScreeningResult: React.FC = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-12">
+    <>
+      <EvidenceImageViewer 
+        isOpen={viewerState.isOpen} 
+        onClose={() => setViewerState(prev => ({...prev, isOpen: false}))} 
+        imageUrl={viewerState.url} 
+        title={viewerState.title} 
+      />
+      <div className="max-w-5xl mx-auto space-y-6 pb-12">
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
@@ -278,5 +316,6 @@ export const ScreeningResult: React.FC = () => {
       </div>
 
     </div>
+    </>
   );
 };

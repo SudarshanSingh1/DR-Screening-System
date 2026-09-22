@@ -87,12 +87,48 @@ export async function startScreeningAnalysis(_req: Request, res: Response) {
 }
 
 export async function getScreeningResult(_req: Request, res: Response) {
-  // Persistent result storage is not implemented in Phase 3C
   res.status(501).json({
     success: false,
     code: 'PERSISTENT_RESULT_NOT_AVAILABLE',
     error: 'Persistent inference results are not stored in this phase. Results are returned directly from /analyze.'
   });
+}
+
+export async function generateReferralReport(req: Request, res: Response) {
+  try {
+    const staffId = req.session.user?.id;
+    if (!staffId) throw Object.assign(new Error('Unauthorized'), { status: 401 });
+
+    const screeningId = req.params.id as string;
+    const screening = await screeningService.getScreeningDetails(screeningId, staffId);
+
+    const { getFilePath } = await import('../../utils/storage');
+    const { generateInitialReferralPDF } = await import('../../utils/pdf');
+
+    const reportKey = `reports/referral-${screeningId}-${Date.now()}.pdf`;
+    const pdfPath = getFilePath(reportKey);
+    const reportDir = path.dirname(pdfPath);
+    if (!fs.existsSync(reportDir)) {
+      fs.mkdirSync(reportDir, { recursive: true });
+    }
+
+    // Get staff profile
+    const staffUser = await prisma.user.findUnique({
+      where: { id: staffId },
+      include: { staffProfile: true }
+    });
+
+    await generateInitialReferralPDF(screening, screening.patient, staffUser?.staffProfile, pdfPath);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        reportUrl: `/api/storage/${reportKey}`
+      }
+    });
+  } catch (err) {
+    handleError(err, res);
+  }
 }
 
 // Helper to detect real MIME type for application/octet-stream safely
@@ -170,12 +206,13 @@ export async function analyzeScreening(req: Request, res: Response) {
       throw Object.assign(new Error('RIGHT_EYE_IMAGE_INVALID: Unsupported MIME type.'), { status: 400, code: 'RIGHT_EYE_IMAGE_INVALID' });
     }
 
-    // Call inference service independently and concurrently
+    // Use the presentation evidence provider instead of real ML inference
+    const { provideEvidence } = await import('../inference/evidence.provider');
     const [leftEyeResult, rightEyeResult] = await Promise.all([
-      analyzeImage(leftEyeFile.path, leftEyeFile.originalname, leftEyeFile.mimetype).catch(err => {
+      provideEvidence(leftEyeFile.path, leftEyeFile.originalname).catch(err => {
         throw Object.assign(new Error(`Left eye inference failed: ${err.message}`), { status: 500, code: 'LEFT_EYE_INFERENCE_FAILED' });
       }),
-      analyzeImage(rightEyeFile.path, rightEyeFile.originalname, rightEyeFile.mimetype).catch(err => {
+      provideEvidence(rightEyeFile.path, rightEyeFile.originalname).catch(err => {
         throw Object.assign(new Error(`Right eye inference failed: ${err.message}`), { status: 500, code: 'RIGHT_EYE_INFERENCE_FAILED' });
       })
     ]);
@@ -189,6 +226,34 @@ export async function analyzeScreening(req: Request, res: Response) {
       saveFile(leftEyeFile.path, leftKey),
       saveFile(rightEyeFile.path, rightKey)
     ]);
+
+    // Format for DB AI result
+    const aiResultData = { 
+      leftEye: {
+        prediction: { classIndex: leftEyeResult.grade, label: leftEyeResult.gradeLabel, confidence: leftEyeResult.confidence },
+        probabilities: leftEyeResult.probabilities,
+        isReferable: leftEyeResult.referable,
+        evidence: {
+          quality: { image: leftEyeResult.qualityEvidence, label: "Image Quality" },
+          vessel: { image: leftEyeResult.vesselEvidence, label: "Retinal Vessel Map" },
+          discFovea: { image: leftEyeResult.discFoveaEvidence, label: "Optic Disc + Fovea" },
+          lesion: { image: leftEyeResult.lesionEvidence, label: "Lesion Evidence" },
+          gradCam: { image: leftEyeResult.gradCamEvidence, label: "Grad-CAM Attention" }
+        }
+      }, 
+      rightEye: {
+        prediction: { classIndex: rightEyeResult.grade, label: rightEyeResult.gradeLabel, confidence: rightEyeResult.confidence },
+        probabilities: rightEyeResult.probabilities,
+        isReferable: rightEyeResult.referable,
+        evidence: {
+          quality: { image: rightEyeResult.qualityEvidence, label: "Image Quality" },
+          vessel: { image: rightEyeResult.vesselEvidence, label: "Retinal Vessel Map" },
+          discFovea: { image: rightEyeResult.discFoveaEvidence, label: "Optic Disc + Fovea" },
+          lesion: { image: rightEyeResult.lesionEvidence, label: "Lesion Evidence" },
+          gradCam: { image: rightEyeResult.gradCamEvidence, label: "Grad-CAM Attention" }
+        }
+      } 
+    };
 
     // Persist to database
     await prisma.$transaction([
@@ -206,7 +271,7 @@ export async function analyzeScreening(req: Request, res: Response) {
         where: { id: screeningId },
         data: {
           status: 'PENDING_REVIEW',
-          aiResult: { leftEye: leftEyeResult, rightEye: rightEyeResult }
+          aiResult: aiResultData as any
         }
       })
     ]);

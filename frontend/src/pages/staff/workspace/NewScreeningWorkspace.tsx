@@ -154,16 +154,27 @@ export const NewScreeningWorkspace: React.FC = () => {
 
   if (!selectedPatient) return null;
 
+  // Redirect to patient search if accessed directly without a patient
+  useEffect(() => {
+    if (!selectedPatient) {
+      navigate('/staff/patients');
+    }
+  }, [selectedPatient, navigate]);
+
+  if (!selectedPatient) {
+    return null; // Or a loading spinner while redirecting
+  }
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center gap-4 mb-8">
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center gap-4">
         <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">New Screening Workspace</h1>
           <p className="text-sm text-gray-500">
-            {selectedPatient.firstName} {selectedPatient.lastName} ({selectedPatient.patientId})
+            {selectedPatient.firstName} {selectedPatient.lastName} ({selectedPatient.id})
           </p>
         </div>
       </div>

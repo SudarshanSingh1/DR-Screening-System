@@ -18,7 +18,7 @@ COPY inference_service/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy inference service source code
-COPY inference_service/main.py .
+COPY inference_service/*.py ./
 
 # Copy the production V2 model and model config
 # model/production/V2/DR_EfficientNetB0_V2.keras — converted from MATLAB .mat
