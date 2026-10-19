@@ -1,0 +1,20 @@
+# MATLAB generated files
+*.asv
+slprj/
+*.slxc
+*.mexa64
+*.mexmaci64
+*.mexmaca64
+*.mexw64
+
+# Training outputs (commit selectively from results/)
+*.log
+checkpoints/
+
+# Large datasets (must not be committed)
+datasets/raw/
+datasets/processed/
+
+# OS files
+.DS_Store
+Thumbs.db

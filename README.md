@@ -12,11 +12,12 @@
 
 <br />
 
+![MATLAB](https://img.shields.io/badge/MATLAB-0076A8?style=for-the-badge&logo=mathworks&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
 ![Python](https://img.shields.io/badge/Python_3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![MATLAB](https://img.shields.io/badge/MATLAB-0076A8?style=for-the-badge&logo=mathworks&logoColor=white)
+
 
 <br />
 
@@ -215,31 +216,213 @@ flowchart TD
 
 ## Project Structure
 
+This repository contains two related but distinct systems:
+
+**A. Production Inference System** — The deployed web application uses a Python-based inference pipeline: a React frontend, Node.js/Express backend with PostgreSQL (Prisma ORM), a FastAPI model inference service running TensorFlow/Keras with Grad-CAM visual explanations, all orchestrated via Docker Compose.
+
+**B. MATLAB / Simulink Research System** — MATLAB and Simulink code for model training, experimentation, image preprocessing, reference algorithms, and rural healthcare simulation. This code does not execute in the live web inference pipeline.
+
+```text
+DR-Screening-System/
+│
+├── backend/                              # Node.js application API and business logic
+│   ├── src/
+│   │   ├── app.ts                        # Express application entry point
+│   │   ├── server.ts                     # HTTP server bootstrap
+│   │   ├── config/                       # Environment and hospital configuration
+│   │   ├── db/                           # Prisma client initialization
+│   │   ├── middleware/                   # Auth, rate-limiting, validation middleware
+│   │   ├── modules/                      # Domain modules:
+│   │   │   ├── admin/                    #   System administration
+│   │   │   ├── auth/                     #   Authentication (login, sessions, JWT)
+│   │   │   ├── doctor/                   #   Clinical review and reporting
+│   │   │   ├── identity/                 #   User identity management
+│   │   │   ├── inference/                #   Proxy to Python inference service
+│   │   │   ├── patient/                  #   Patient records and portal
+│   │   │   ├── patient-feedback/         #   Patient feedback collection
+│   │   │   ├── platform-feedback/        #   Platform-wide feedback
+│   │   │   ├── password/                 #   Password management
+│   │   │   ├── screening/               #   Screening workflow orchestration
+│   │   │   ├── staff/                    #   Staff management
+│   │   │   └── storage/                  #   File storage utilities
+│   │   ├── providers/                    # External service integrations
+│   │   │   ├── email/                    #   Email delivery
+│   │   │   └── otp/                      #   OTP generation and verification
+│   │   ├── types/                        # TypeScript type definitions
+│   │   └── utils/                        # Shared utilities (PDF generation, storage)
+│   ├── prisma/
+│   │   ├── schema.prisma                 # PostgreSQL database schema
+│   │   ├── seed.ts                       # Database seed script
+│   │   └── migrations/                   # Versioned schema migrations
+│   ├── Dockerfile                        # Node.js container image
+│   ├── package.json                      # Backend dependencies and scripts
+│   └── tsconfig.json                     # TypeScript configuration
+│
+├── frontend/                             # React web application (Vite + TypeScript)
+│   ├── public/                           # Static assets, icons, evidence images
+│   ├── src/
+│   │   ├── App.tsx                       # Root application component
+│   │   ├── main.tsx                      # Vite entry point
+│   │   ├── assets/                       # Images, diagrams, branding
+│   │   ├── components/                   # UI components by domain:
+│   │   │   ├── admin/                    #   Admin dashboard components
+│   │   │   ├── auth/                     #   Login and authentication UI
+│   │   │   ├── common/                   #   Shared/reusable components
+│   │   │   ├── doctor/                   #   Clinical review interface
+│   │   │   ├── landing/                  #   Public landing page
+│   │   │   ├── layout/                   #   Layout wrappers and navigation
+│   │   │   ├── patient/                  #   Patient portal components
+│   │   │   ├── shared/                   #   Cross-domain shared components
+│   │   │   ├── staff/                    #   Screening staff interface
+│   │   │   └── ui/                       #   Base UI primitives
+│   │   ├── config/                       # Frontend configuration
+│   │   ├── contexts/                     # React contexts (Language, Toast)
+│   │   ├── hooks/                        # Custom React hooks
+│   │   ├── locales/                      # i18n translations (English, Hindi)
+│   │   ├── pages/                        # Route-level page components
+│   │   │   ├── admin/                    #   Admin dashboard pages
+│   │   │   ├── auth/                     #   Authentication pages
+│   │   │   ├── doctor/                   #   Doctor review pages
+│   │   │   ├── patient/                  #   Patient portal pages
+│   │   │   └── staff/                    #   Staff screening pages
+│   │   ├── services/                     # API client and service layer
+│   │   ├── styles/                       # Global CSS (Tailwind)
+│   │   └── types/                        # TypeScript type definitions
+│   ├── Dockerfile                        # Nginx static delivery container
+│   ├── nginx.conf                        # Nginx reverse proxy configuration
+│   ├── package.json                      # Frontend dependencies and scripts
+│   ├── vite.config.ts                    # Vite build configuration
+│   └── tailwind.config.js               # TailwindCSS configuration
+│
+├── inference_service/                    # Python model inference API (FastAPI)
+│   ├── main.py                           # FastAPI app: /health, /analyze, /analyze/single
+│   ├── evidence_generator.py             # Quality, vessel, disc/fovea, lesion evidence
+│   ├── requirements.txt                  # Python dependencies (TensorFlow, FastAPI, etc.)
+│   └── Dockerfile                        # Python inference container
+│
+├── model/                                # Model artifacts and configuration
+│   ├── production/
+│   │   └── V2/                           # Current production model
+│   │       ├── DR_EfficientNetB0_V2.keras    # Production Keras model (DO NOT overwrite)
+│   │       ├── v2_weights.npz                # Extracted weight arrays
+│   │       └── verification_report.json      # Model verification results
+│   ├── reference/
+│   │   └── DR_EfficientNetB0_V2.mat      # MATLAB reference model (.mat format)
+│   ├── config/
+│   │   └── model_config.json             # Class names, thresholds, architecture metadata
+│   ├── training/
+│   │   └── README.md                     # Training provenance and configuration docs
+│   └── README.md                         # Model provenance summary
+│
+├── matlab/                               # MATLAB / Simulink research and training
+│   ├── algorithms/                       # Image processing algorithms
+│   │   ├── preprocessing/                #   preprocessFundus.m
+│   │   ├── enhancement/                  #   Image enhancement utilities
+│   │   ├── quality/                      #   Image quality assessment
+│   │   └── segmentation/                 #   Retinal structure segmentation
+│   ├── core/                             # Core MATLAB shared utilities
+│   ├── explainability/                   # Grad-CAM generation (generateGradCAM.m)
+│   ├── inference/                        # MATLAB inference reference (loadDRModel, predictDR)
+│   ├── reporting/                        # Screening report generation (runScreening.m)
+│   ├── simulink/                         # Simulink simulation framework
+│   │   ├── DRScreeningSystem.slx         #   Clinic-level screening simulation
+│   │   ├── DRDistrictSystem.slx          #   District-level resource planning simulation
+│   │   ├── blocks/                       #   17 custom Simulink block implementations
+│   │   ├── buildDRScreeningModel.m       #   Model builder scripts
+│   │   ├── buildDistrictModel.m
+│   │   ├── runSimulation.m               #   Simulation runners
+│   │   ├── runDistrictSimulation.m
+│   │   ├── simulationConfig.m            #   Simulation parameters
+│   │   ├── collectSimulationMetrics.m    #   Metrics collection
+│   │   ├── visualizeSimulationResults.m  #   Results visualization
+│   │   ├── testSimulation.m              #   Simulation test scripts
+│   │   └── testDistrictSimulation.m
+│   ├── tests/                            # Integration tests (testRealPipeline.m)
+│   ├── training/                         # ★ MATLAB training contribution area
+│   │   ├── scripts/                      #   Training entry-point scripts
+│   │   │   └── train_dr_model.m          #   Starter template (implement before use)
+│   │   ├── functions/                    #   Reusable training functions and utilities
+│   │   ├── configs/                      #   Experiment configuration files
+│   │   └── README.md                     #   Contributor guide for training code
+│   ├── preprocessing/                    #   Dataset preparation and normalization
+│   ├── datasets/                         #   Dataset documentation and manifests only
+│   ├── evaluation/                       #   Metrics, validation, and evaluation scripts
+│   ├── models/                           #   MATLAB-specific trained artifacts (small only)
+│   ├── conversion/                       #   Model export and format conversion utilities
+│   ├── results/                          #   Experiment summaries and selected plots
+│   └── README.md                         # MATLAB workflow documentation
+│
+├── docs/                                 # Technical documentation
+│   ├── ARCHITECTURE.md                   # System architecture overview
+│   ├── INFERENCE.md                      # Inference pipeline documentation
+│   ├── GRADCAM.md                        # Grad-CAM implementation details
+│   ├── MODEL.md                          # Model architecture and training notes
+│   ├── SIMULATION.md                     # Simulink simulation documentation
+│   ├── TESTING.md                        # Testing strategy and guidelines
+│   └── GIT_WORKFLOW.md                   # Git branching and contribution workflow
+│
+├── config/                               # Environment templates and configuration
+├── licenses/                             # Third-party license information
+├── docker-compose.yml                    # 4-service orchestration (DB, API, Inference, Frontend)
+├── .env.example                          # Environment variable template (no secrets)
+├── .gitignore                            # Tracked exclusion rules
+├── SECURITY.md                           # Security policy
+├── XAI_Approach.md                       # Explainable AI methodology
+└── README.md                             # This file
 ```
-Vision-AI/
-├── backend/
-│   ├── src/             Express API, Auth Middleware, Routing
-│   ├── prisma/          PostgreSQL Database Schema & Migrations
-│   ├── Dockerfile       Node.js Container
-│   └── package.json
-├── config/              Environment templates & configurations
-├── docs/                Technical architecture documentation
-├── frontend/
-│   ├── public/          Static Assets & Images
-│   ├── src/             React Application (Admin, Doctor, Staff, Patient)
-│   ├── Dockerfile       Nginx Static Delivery
-│   └── package.json
-├── inference_service/
-│   ├── model/           Production Weights & Configs
-│   ├── main.py          FastAPI Inference Engine
-│   ├── requirements.txt Python Dependencies
-│   └── Dockerfile       Python Container
-├── licenses/            Open Source Licenses
-├── matlab/              Simulink Models & MATLAB Reference Algorithms
-├── docker-compose.yml   Production Stack Orchestration
-├── .env.example         Environment template
-└── README.md            This file
+
+> **Note:** Directories under `matlab/training/`, `matlab/preprocessing/`, `matlab/datasets/`, `matlab/evaluation/`, `matlab/models/`, `matlab/conversion/`, and `matlab/results/` are prepared for contributions. See [`matlab/training/README.md`](matlab/training/README.md) for the full contributor guide.
+
+### Model Lifecycle
+
+Research artifacts and production artifacts follow a structured lifecycle. This is an architectural overview — not every stage is currently automated.
+
+```text
+Dataset documentation (matlab/datasets/)
+        │
+        ▼
+MATLAB preprocessing and experiments (matlab/preprocessing/, matlab/algorithms/)
+        │
+        ▼
+Training and validation (matlab/training/)
+        │
+        ▼
+Evaluation and model selection (matlab/evaluation/)
+        │
+        ▼
+Export / conversion if required (matlab/conversion/)
+        │
+        ▼
+Compatibility and parity testing against current production model
+        │
+        ▼
+Approved production model (model/production/V<next>/)
+        │
+        ▼
+Python FastAPI inference service (inference_service/)
+        │
+        ▼
+Web application and screening workflow (frontend/ + backend/)
 ```
+
+A new model must pass compatibility, evaluation, and integration checks before replacing the current production artifact. Never overwrite `model/production/V2/` without team review.
+
+### MATLAB Training Contributions
+
+Contributing MATLAB training code? Navigate to **`matlab/training/scripts/`** and follow the guide in [`matlab/training/README.md`](matlab/training/README.md).
+
+| Task | Location |
+|---|---|
+| Training entry-point scripts | `matlab/training/scripts/` |
+| Reusable functions, losses, metrics | `matlab/training/functions/` |
+| Experiment configs and hyperparameters | `matlab/training/configs/` |
+| Dataset preparation utilities | `matlab/preprocessing/` |
+| Evaluation and validation scripts | `matlab/evaluation/` |
+| Trained MATLAB artifacts (small only) | `matlab/models/` |
+| Model export and conversion | `matlab/conversion/` |
+| Experiment results and plots | `matlab/results/` |
+
+The starter template [`matlab/training/scripts/train_dr_model.m`](matlab/training/scripts/train_dr_model.m) provides a documented scaffold with placeholders for each pipeline stage. All `[TODO]` sections must be implemented before execution.
 
 ---
 
