@@ -871,9 +871,9 @@ The repository contains an extensive MATLAB and Simulink suite completely isolat
 ```text
 Production Web Stack (Docker Compose)          MATLAB / Simulink Research Stack
 ┌──────────────────────────────────────┐       ┌─────────────────────────────────────┐
-│ React Frontend (Port 3000)          │       │ matlab/algorithms/                  │
-│ Node.js / Express API (Port 8080)   │       │   (preprocessing, enhancement)      │
-│ FastAPI Inference Engine (Port 8000)│       │ matlab/simulink/                    │
+│ React Frontend (Port 3000)           │       │ matlab/algorithms/                  │
+│ Node.js / Express API (Port 8080)    │       │   (preprocessing, enhancement)      │
+│ FastAPI Inference Engine (Port 8000) │       │ matlab/simulink/                    │
 │   DR_EfficientNetB0_V2.keras         │       │   (DRScreeningSystem.slx)           │
 │ PostgreSQL 16 Database (Port 5432)   │       │ matlab/training/                    │
 └──────────────────────────────────────┘       │   (contributor workspace & scripts) │
