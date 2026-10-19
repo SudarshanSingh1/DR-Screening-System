@@ -586,12 +586,7 @@ In the research repository (`matlab/algorithms/`), advanced image-processing fun
 
 ## Explainable AI: Grad-CAM
 
-Vision AI incorporates **Gradient-weighted Class Activation Mapping (Grad-CAM)** to provide visual explanations of model predictions.
-
-<div align="center">
-<img src="frontend/public/evidence/gradcam_sample.png" alt="Grad-CAM Visualization" width="70%" style="border-radius: 8px;" onerror="this.style.display='none'" />
-<br /><sub>Class Activation Mapping highlighting regions of diagnostic interest.</sub>
-</div>
+Vision AI incorporates **Gradient-weighted Class Activation Mapping (Grad-CAM)** to provide visual explanations of model predictions by highlighting spatial regions of diagnostic interest on retinal fundus images.
 
 ### Mathematical Formulation
 
@@ -609,7 +604,7 @@ Let $A^k \in \mathbb{R}^{U \times V}$ represent the $k$-th feature map of the ta
 2. **Localization Map ($L_{\mathrm{Grad-CAM}}^c$):**
    A weighted combination of forward activation maps is computed, followed by a Rectified Linear Unit (ReLU) to isolate features that have a positive influence on the target class score:
 
-   $$L_{\mathrm{Grad-CAM}}^c = \operatorname{ReLU}\left( \sum_{k=1}^{K} \alpha_k^c A^k \right)$$
+   $$L_{\mathrm{Grad-CAM}}^c = \mathrm{ReLU}\left( \sum_{k=1}^{K} \alpha_k^c A^k \right)$$
 
 ---
 
