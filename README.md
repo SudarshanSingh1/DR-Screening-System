@@ -47,172 +47,881 @@
 ## Table of Contents
 
 - [Overview](#overview)
-- [Architecture](#architecture)
-- [AI Model](#ai-model)
+- [System Architecture](#system-architecture)
+  - [Architectural Topology](#architectural-topology)
+  - [Layer A: Role-Based Frontend Portals](#layer-a-role-based-frontend-portals)
+  - [Layer B: Authentication & Application Gateway](#layer-b-authentication--application-gateway)
+  - [Layer C: Deep Learning Inference Service](#layer-c-deep-learning-inference-service)
+  - [Layer D: Data Persistence & Volume Storage](#layer-d-data-persistence--volume-storage)
+  - [Layer E: Clinical Review & Report Generation](#layer-e-clinical-review--report-generation)
 - [Deep Learning Pipeline](#deep-learning-pipeline)
+  - [Production Pipeline Flow](#production-pipeline-flow)
+  - [Pipeline Execution Stages](#pipeline-execution-stages)
+- [Inference Service Contract](#inference-service-contract)
+  - [API Endpoints](#api-endpoints)
+  - [Input Contract](#input-contract)
+  - [Model Execution](#model-execution)
+  - [Output Schema](#output-schema)
+  - [Uncertainty & Calibration Notice](#uncertainty--calibration-notice)
+- [Diabetic Retinopathy Classification](#diabetic-retinopathy-classification)
+  - [Five-Class Severity Scale](#five-class-severity-scale)
+  - [Multiclass Grading vs. Binary Referable Screening](#multiclass-grading-vs-binary-referable-screening)
+  - [Threshold Configuration & Evaluation Origins](#threshold-configuration--evaluation-origins)
+- [Image Preprocessing and Quality Assessment](#image-preprocessing-and-quality-assessment)
+  - [Tensor Preprocessing Contract](#tensor-preprocessing-contract)
+  - [Embedded Model Normalization](#embedded-model-normalization)
+  - [Heuristic Evidence Visualizations](#heuristic-evidence-visualizations)
+  - [MATLAB Experimental Image Processing](#matlab-experimental-image-processing)
+- [Explainable AI: Grad-CAM](#explainable-ai-grad-cam)
+  - [Mathematical Formulation](#mathematical-formulation)
+  - [Gradient Computation on Pre-Softmax Logits](#gradient-computation-on-pre-softmax-logits)
+  - [Colormap & Alpha Blending](#colormap--alpha-blending)
+  - [Numerical Stability & Validation](#numerical-stability--validation)
+  - [Clinical Safety Boundaries](#clinical-safety-boundaries)
+- [Model Training and Evaluation](#model-training-and-evaluation)
+  - [Training Workflow & Fine-Tuning Setup](#training-workflow--fine-tuning-setup)
+  - [Historical Fine-Tuning Benchmarks](#historical-fine-tuning-benchmarks)
+  - [Production Artifact Technical Verification](#production-artifact-technical-verification)
+  - [Prospective Multi-Center Evaluation Framework](#prospective-multi-center-evaluation-framework)
+- [Model Artifact Lifecycle and Interoperability](#model-artifact-lifecycle-and-interoperability)
+  - [Model Promotion Workflow](#model-promotion-workflow)
+  - [Cross-Framework Parity Requirements](#cross-framework-parity-requirements)
+- [Clinical Decision and Review Workflow](#clinical-decision-and-review-workflow)
+  - [End-to-End Clinical Data Flow](#end-to-end-clinical-data-flow)
+  - [Doctor-in-the-Loop Governance](#doctor-in-the-loop-governance)
+  - [Data Persistence Separation](#data-persistence-separation)
+- [MATLAB / Simulink Research Pipeline](#matlab--simulink-research-pipeline)
+  - [Isolated Research Architecture](#isolated-research-architecture)
+  - [Real MATLAB Inference Reference](#real-matlab-inference-reference)
+  - [Operational Simulink Simulation](#operational-simulink-simulation)
+  - [MATLAB Contributor Workspace](#matlab-contributor-workspace)
 - [Project Structure](#project-structure)
 - [Quick Start](#quick-start)
 - [API Reference](#api-reference)
-- [Platform](#platform)
-- [Features](#features)
-- [Doctor-in-the-Loop](#doctor-in-the-loop)
-- [Explainability](#explainability)
-- [Simulation](#simulation)
+- [Platform Portals](#platform-portals)
+- [Operational Simulation](#operational-simulation)
 - [Tech Stack](#tech-stack)
 - [Environment Variables](#environment-variables)
 - [Implementation Status](#implementation-status)
 - [SIH Presentation Login Credentials](#sih-presentation-login-credentials)
-- [Team](#team)
+- [Team Viltrumites](#team-viltrumites)
 
 ---
 
 ## Overview
 
-Vision AI is a production-grade, AI-assisted triage system designed for diabetic retinopathy (DR) screening in resource-constrained rural healthcare environments. It securely processes bilateral fundus images in real-time, generates explainable Grad-CAM heatmaps, and coordinates a strict "doctor-in-the-loop" clinical workflow.
+Vision AI is a production-grade, AI-assisted triage system engineered for diabetic retinopathy (DR) screening in resource-constrained rural healthcare environments. It securely processes bilateral fundus images in real time, generates mathematically grounded Grad-CAM attention heatmaps, and coordinates a strict **"doctor-in-the-loop"** clinical workflow.
 
-The system handles the full screening lifecycle — from rural patient registration and image upload, through AI inference and clinical routing, to ophthalmologist review and final report generation.
+The system handles the entire screening lifecycle — from rural patient registration and bilateral fundus image capture at Primary Health Centres (PHCs), through automated deep learning inference and risk stratification, to remote ophthalmologist review and digitally verifiable PDF report issuance.
 
-| Component | Description |
+| Dimension | Specification |
 |---|---|
-| **AI Model** | EfficientNetB0 (V2) for 5-class DR classification |
-| **Workflow** | Bilateral (Left & Right eye) independent screening |
-| **Explainability** | Grad-CAM attention heatmaps |
-| **Controls** | Strict RBAC, immutable clinical reports, doctor overrides |
-| **Interfaces** | Express API, FastAPI Inference, React Portals |
+| **Production AI Architecture** | EfficientNetB0 (V2) fine-tuned for 5-class ICDR severity classification |
+| **Inference Framework** | Python 3.11, FastAPI, TensorFlow/Keras 2.x |
+| **Bilateral Processing** | Independent, parallel analysis of Left and Right fundus images |
+| **Visual Explainability** | True gradient-weighted Class Activation Mapping (Grad-CAM) on spatial feature maps |
+| **Clinical Governance** | Mandatory ophthalmologist review; AI output never serves as an autonomous diagnosis |
+| **Application Stack** | React (TypeScript + Vite), Node.js (Express + Prisma ORM), PostgreSQL 16 |
+| **Deployment Strategy** | Fully containerized multi-tier orchestration via Docker Compose |
+| **Research & Operations** | Isolated MATLAB reference algorithms & Simulink district capacity simulation |
 
-> **Important:** This project implements an assistive screening pipeline. The AI does not make autonomous diagnoses; the remote doctor provides the final clinical decision.
+> [!IMPORTANT]
+> **Assistive Screening Mandate:** Vision AI is an assistive decision-support platform designed to prioritize clinical review queues and highlight suspicious retinal regions. It does not replace ophthalmologists or make autonomous clinical diagnoses.
 
 ---
 
-## Architecture
+## System Architecture
 
-The screening path securely bridges rural screening staff with remote specialists using independent APIs and AI processing.
+The Vision AI platform is structured into five decoupled architectural layers that ensure clear separation of concerns between client interfaces, business logic, deep learning inference, data persistence, and clinical review.
 
-### Screening Pipeline
-
-```mermaid
-flowchart LR
-  A[Patient Registration] --> B[Staff Image Upload]
-  B --> C[Node.js Gateway]
-  C --> D[Image Validation]
-  D --> E[Python Inference Service]
-  E --> F[Left Eye Analysis]
-  E --> G[Right Eye Analysis]
-  F --> H[Grad-CAM Generation]
-  G --> H
-  H --> I[Review Queue]
-  I --> J[Doctor Review]
-  J --> K[Clinical Decision]
-  K --> L[Secure Clinical Report]
-
-  classDef input fill:#e9f5ff,stroke:#1683d8,color:#102a43
-  classDef processing fill:#fff4db,stroke:#d97706,color:#4a2600
-  classDef review fill:#e9f8ef,stroke:#27945b,color:#123b25
-  classDef output fill:#f5efff,stroke:#815ac7,color:#2d1b4e
-  class A,B input
-  class C,D,E,F,G,H processing
-  class I,J,K review
-  class L output
-```
-
-### System Architecture
+### Architectural Topology
 
 ```mermaid
 flowchart TD
-    S[Frontend Portals] --> V{RBAC Gateway}
-    V -->|Admin| X[System Management]
-    V -->|Doctor| D[Clinical Review Queue]
-    V -->|Staff| R[Screening Registration]
-    R --> I[Inference API]
-    I --> P[EfficientNetB0_V2.keras]
-    P --> M[Predictions + Heatmaps]
-    M --> DB[(PostgreSQL)]
-    DB --> D
-    D --> C[Clinical Report Generator]
+    subgraph LayerA["Layer A: Role-Based Frontend Portals (React + Vite)"]
+        UI_Admin["Admin Dashboard<br/><i>Facility & User Management</i>"]
+        UI_Staff["Staff Portal<br/><i>Patient Reg & Bilateral Upload</i>"]
+        UI_Doctor["Doctor Review Panel<br/><i>AI Heatmaps & Diagnosis</i>"]
+        UI_Patient["Patient Portal<br/><i>Report Retrieval</i>"]
+    end
+
+    subgraph LayerB["Layer B: Application Gateway & Backend API (Node.js + Express)"]
+        API_Auth["Auth Middleware & Session Engine<br/><i>JWT / BCrypt / RBAC Enforcement</i>"]
+        API_Screening["Screening Domain Controller<br/><i>Validation & Pipeline Coordination</i>"]
+        API_Storage["Storage Service<br/><i>Disk Upload & Report Retrieval</i>"]
+    end
+
+    subgraph LayerC["Layer C: Deep Learning Inference Service (Python + FastAPI)"]
+        INF_FastAPI["FastAPI HTTP Gateway<br/><i>/analyze (Bilateral Multipart)</i>"]
+        INF_Provider["PythonV2Provider Engine<br/><i>Tensor Normalization & Batching</i>"]
+        INF_Keras["DR_EfficientNetB0_V2.keras<br/><i>5-Class Softmax Classifier</i>"]
+        INF_GradCAM["Grad-CAM Explainer<br/><i>Gradient Attribution on top_activation</i>"]
+        INF_Evidence["Heuristic Evidence Generator<br/><i>Vessel, Disc/Fovea, Lesion Overlays</i>"]
+    end
+
+    subgraph LayerD["Layer D: Persistence & Storage"]
+        DB_Postgres[("PostgreSQL Database (Prisma ORM)<br/><i>Users, Patients, Screenings, Reviews</i>")]
+        FS_Uploads["Persistent Disk Volume (/uploads)<br/><i>Raw Bilateral Fundus Images</i>"]
+        FS_Reports["Persistent Disk Volume (/reports)<br/><i>Signed Clinical PDF Reports</i>"]
+    end
+
+    subgraph LayerE["Layer E: Clinical Review & Report Generation"]
+        REV_Queue["Ophthalmologist Review Queue<br/><i>Status: PENDING_REVIEW</i>"]
+        REV_Decision["Doctor Decision Override<br/><i>DR_DETECTED | NO_DR_DETECTED</i>"]
+        REV_PDF["PDFKit Report Generator<br/><i>Immutable Audit Record with QR Code</i>"]
+    end
+
+    %% Interactions
+    UI_Staff -->|1. Register & Upload Fundus| API_Auth
+    UI_Doctor -->|Review Queue & Submit Decision| API_Auth
+    UI_Admin -->|Manage Facilities & Accounts| API_Auth
+    UI_Patient -->|Download Final Report| API_Auth
+
+    API_Auth --> API_Screening
+    API_Screening -->|Store Raw Images| FS_Uploads
+    API_Screening -->|Persist Screening Metadata| DB_Postgres
+    API_Screening -->|2. POST /analyze Multipart| INF_FastAPI
+
+    INF_FastAPI --> INF_Provider
+    INF_Provider --> INF_Keras
+    INF_Provider --> INF_GradCAM
+    INF_Provider --> INF_Evidence
+    INF_Keras -->|Logits & Softmax Probs| INF_Provider
+    INF_GradCAM -->|Base64 Attention Heatmap| INF_Provider
+    INF_Evidence -->|Base64 Overlays| INF_Provider
+    INF_Provider -->|JSON Predictions + Visual Artifacts| INF_FastAPI
+    INF_FastAPI -->|3. Bilateral Screening Payload| API_Screening
+
+    API_Screening -->|4. Snapshot aiResult JSON| DB_Postgres
+    DB_Postgres -->|5. Populate Queue| REV_Queue
+    REV_Queue --> UI_Doctor
+    UI_Doctor -->|6. Authorize Clinical Review| REV_Decision
+    REV_Decision -->|7. Persist Doctor Review| DB_Postgres
+    REV_Decision -->|8. Generate Signed PDF| REV_PDF
+    REV_PDF -->|Store PDF Artifact| FS_Reports
+    REV_PDF -->|Record ClinicalReport Key| DB_Postgres
+
+    classDef frontend fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,color:#1e1b4b
+    classDef backend fill:#fdf4ff,stroke:#c084fc,stroke-width:1.5px,color:#3b0764
+    classDef inference fill:#f5efff,stroke:#815ac7,stroke-width:1.5px,color:#2d1b4e
+    classDef storage fill:#f0fdf4,stroke:#22c55e,stroke-width:1.5px,color:#14532d
+    classDef clinical fill:#fff7ed,stroke:#ea580c,stroke-width:1.5px,color:#7c2d12
+
+    class UI_Admin,UI_Staff,UI_Doctor,UI_Patient frontend
+    class API_Auth,API_Screening,API_Storage backend
+    class INF_FastAPI,INF_Provider,INF_Keras,INF_GradCAM,INF_Evidence inference
+    class DB_Postgres,FS_Uploads,FS_Reports storage
+    class REV_Queue,REV_Decision,REV_PDF clinical
 ```
 
 <br />
+
 <div align="center">
 <img src="frontend/src/assets/system%20design.jpeg" alt="System Design" width="90%" style="border-radius: 8px;" />
-<br /><sub>Detailed system design and component interaction flow.</sub>
+<br /><sub>Comprehensive system component interaction and data security boundary flow.</sub>
 </div>
-
 
 ---
 
-## AI Model
+### Layer A: Role-Based Frontend Portals
 
-The core inference engine utilizes `DR_EfficientNetB0_V2.mat` (deployed via translated Keras weights) for 5-class diabetic retinopathy classification.
+The frontend is a single-page application built on **React 18**, **TypeScript**, **Vite**, and **TailwindCSS**. It serves four discrete user roles governed by strict route guards:
 
-| Class | Diagnosis | Description |
-|---|---|---|
-| 0 | No DR | No apparent diabetic retinopathy |
-| 1 | Mild | Microaneurysms only |
-| 2 | Moderate | More than just microaneurysms, but less than severe |
-| 3 | Severe | 20+ intraretinal hemorrhages, venous beading, or IRMA |
-| 4 | Proliferative | Neovascularization or vitreous/preretinal hemorrhage |
+1. **Screening Staff Portal:** Built for health workers at rural vision centers. Allows quick patient demographic registration, camera-agnostic bilateral fundus upload (`leftEye` and `rightEye`), real-time upload status tracking, and screening dispatch.
+2. **Doctor Review Portal:** Optimized for remote ophthalmologists. Provides a real-time review queue sorted by triage urgency, side-by-side high-resolution bilateral fundus viewer, interactive Grad-CAM heatmap opacity toggles, per-class probability breakdowns, and a diagnostic form for final diagnosis entry.
+3. **Admin Dashboard:** Platform monitoring suite displaying system throughput, screening completion rates, facility mapping across districts, and user account management (staff onboarding, doctor credential verification).
+4. **Patient Portal:** Read-only portal for registered patients to check their screening status, review verified doctor recommendations, and download signed clinical reports.
 
-**Bilateral Analysis:** Left and right eyes are processed independently, ensuring accurate lateral assessment for the reviewing doctor.
+---
 
-<br />
+### Layer B: Authentication & Application Gateway
 
-<div align="center">
-<img src="frontend/public/images/hero-slide-1.png" alt="AI Screening Interface" width="80%" style="border-radius: 8px;" />
-<br /><sub>AI-assisted screening interface demonstrating bilateral analysis and clinical workflow.</sub>
-</div>
-<img width="1277" height="706" alt="image" src="https://github.com/user-attachments/assets/8798e5d6-1c4f-4470-9b67-2f048a9c7817" />
+Implemented in **Node.js (Express)** with full **TypeScript** type safety. It provides:
+
+- **Security & RBAC Middleware:** Session handling via PostgreSQL-backed session store, JWT authentication, bcrypt password hashing, and strict role guards (`PATIENT`, `SCREENING_STAFF`, `DOCTOR`, `ENGINEER_ADMIN`).
+- **Domain Routing:** Specialized modular controllers (`screening/`, `doctor/`, `patient/`, `admin/`, `storage/`) preventing monolithic controller bloat.
+- **Payload Validation:** Enforces MIME validation, file size boundaries (up to 50MB per upload), and parameter sanitization before passing requests downstream.
+- **Inference Proxying:** Streams bilateral image payloads to the FastAPI inference engine over the internal Docker network (`http://inference:8000`), handling timeouts, connection retries, and graceful degradation.
+
+---
+
+### Layer C: Deep Learning Inference Service
+
+A dedicated, isolated microservice built on **Python 3.11** and **FastAPI**. It contains no frontend or database dependencies, ensuring clean container isolation and horizontal scalability:
+
+- **Runtime Engine (`PythonV2Provider`):** Initializes TensorFlow 2.x and loads the production weights from `model/production/V2/DR_EfficientNetB0_V2.keras`.
+- **Inference Orchestration:** Concurrently processes bilateral fundus images, generating predictions, uncertainty flags, Grad-CAM heatmaps, and heuristic evidence visual overlays.
+- **Decoupled Research Boundary:** Pure Python execution in production. MATLAB is strictly reserved for offline research, training, and Simulink operations.
+
+---
+
+### Layer D: Data Persistence & Volume Storage
+
+To prevent database bloat and performance degradation, data storage is strictly partitioned:
+
+- **Relational Metadata (PostgreSQL 16 + Prisma ORM):** Stores tabular entities including `User`, `Patient`, `Screening`, `ScreeningImage` metadata, `ClinicalReview`, and `AuditLog`. The `Screening.aiResult` column stores an immutable JSON snapshot of the full AI inference response.
+- **Persistent Disk Storage (Docker Volumes):** Raw fundus images are persisted to the `/uploads` volume under deterministic screening IDs (`uploads/screenings/{id}/`). Generated PDF reports are saved to the `/reports` volume and indexed via `ClinicalReport.storageKey`.
+
+---
+
+### Layer E: Clinical Review & Report Generation
+
+The final clinical determination is always performed by a certified clinician:
+
+- **Review Queue Management:** Screenings with AI predictions are automatically assigned the state `PENDING_REVIEW`.
+- **Diagnostic Override:** The ophthalmologist records `doctorDecision` (`DR_DETECTED` or `NO_DR_DETECTED`), selects clinical findings, adds bespoke observations, and specifies follow-up intervals.
+- **Immutable PDF Generation:** The `backend/src/utils/pdf.ts` module compiles the review into an audit-grade clinical PDF featuring clinic branding, patient details, fundus thumbnails, AI risk indicators, doctor observations, digital signature placeholder, and a cryptographically verifiable QR code.
+- **State Finalization:** The screening transitions to `COMPLETED`, locking the clinical record against further modifications.
 
 ---
 
 ## Deep Learning Pipeline
 
+The Vision AI inference engine executes a deterministic deep learning pipeline designed to deliver bilateral classification, uncertainty quantification, and gradient-weighted visual explanations in under 1 second per patient.
+
+### Production Pipeline Flow
+
 ```mermaid
 flowchart TD
-    A[ Raw Fundus Image] --> B[ Quality Assessment: assessQuality]
-    
-    B -- "0.40 <= Score < 0.65 Borderline" --> C[ Adaptive Enhancement: enhanceImage]
-    B -- "Score < 0.40 Reject" --> D[ Recapture Image Feedback]
-    B -- "Score >= 0.65 Good" --> E
-    
-    C --> E
-    
-    subgraph Micro-Structure Extraction
-        E[ Retinal Structure Segmentation]
-        E --> F[Optic Disc & Fovea Localization]
-        E --> G[Multi-scale Gabor Vessel Extraction]
-        E --> H[Multi-Lesion Detection: MA, Exudate, Hem, NV]
+    subgraph Ingestion["1. Image Ingestion & Input Contract"]
+        RAW["Bilateral Retinal Fundus Uploads<br/><i>(leftEye, rightEye files via Multipart)</i>"]
+        MIME_CHECK{"MIME & Header Validation<br/><i>JPEG, PNG, BMP, TIFF</i>"}
+        REJECT_MIME["HTTP 400 Bad Request<br/><i>Corrupt or Unsupported Format</i>"]
+        PIL_DECODE["PIL Image Conversion<br/><i>Decoded to (H, W, 3) uint8 RGB</i>"]
     end
-    
-    F --> I
-    G --> I
-    H --> I
-    
-    subgraph Multi-Stream Intelligence
-        I[ Deep Ensemble & Feature Fusion]
-        I --> J[9 Quantitative Clinical Feature Metrics]
-        I --> K[InceptionV3 & EfficientNet-B0 + TTA]
+
+    subgraph Preproc["2. Preprocessing & Tensor Construction"]
+        RESIZE["Bilinear Interpolation<br/><i>Resized to 224 × 224 pixels</i>"]
+        FLOAT_CONV["Type Conversion<br/><i>Cast to float32 in [0.0, 255.0] range</i>"]
+        TENSOR_EXPAND["Tensor Construction<br/><i>Add batch dimension: (1, 224, 224, 3)</i>"]
     end
-    
-    J --> L
-    K --> L
-    
-    L[ Random Forest Fusion & Temperature Calibration]
-    
-    L --> M[ Grad-CAM Heatmap & Lesion Overlay]
-    L --> N[ Referable DR Decision: Level >= 2]
-    
-    M --> O[ Clinical PDF/PNG Screening Report Generator]
-    N --> O
-    N --> P[ Telemedicine Simulink Workflow Simulation]
-    
-    classDef default fill:#1e1e1e,stroke:#444,stroke-width:1px,color:#fff
-    classDef reject fill:#3a1d1d,stroke:#ff4d4d,color:#fff
-    
-    class D reject
+
+    subgraph InferenceEngine["3. EfficientNetB0 V2 Neural Network"]
+        EMBEDDED_NORM["Embedded Model Layers<br/><i>Rescaling (÷255) + Z-Score Normalization</i>"]
+        BACKBONE["EfficientNetB0 Backbone<br/><i>238 feature extraction layers (MBConv blocks)</i>"]
+        SWISH_HEAD["top_activation Layer<br/><i>Swish activation (7 × 7 × 1280 feature maps)</i>"]
+        POOL_LOGITS["Global Average Pooling & dr_classifier<br/><i>Dense Layer → 5 Pre-Softmax Logits</i>"]
+        SOFTMAX["Softmax Activation Layer<br/><i>5-Class Probability Distribution</i>"]
+    end
+
+    subgraph Decision["4. Triage & Decision Logic"]
+        ARGMAX["Class Index Determination<br/><i>argmax(p) → Predicted DR Grade (0 to 4)</i>"]
+        REF_CHECK{"Referable DR Threshold<br/><i>sum(p[2..4]) ≥ 0.20798 ?</i>"}
+        CONF_CHECK{"Uncertainty Check<br/><i>max(p) < 0.50 ?</i>"}
+        IS_REF_TRUE["isReferable = true<br/><i>Priority Specialist Routing</i>"]
+        IS_REF_FALSE["isReferable = false<br/><i>Routine Monitoring</i>"]
+        IS_LOW_CONF["isLowConfidence = true<br/><i>Flagged for Specialist Scrutiny</i>"]
+    end
+
+    subgraph XAI["5. Explainable AI & Heuristic Evidence"]
+        GRADCAM_TAPE["tf.GradientTape Backprop<br/><i>Compute ∂(logit_c) / ∂(top_activation)</i>"]
+        GAP_WEIGHTS["Spatial Average Pooling<br/><i>Compute Channel Importance α_k^c</i>"]
+        RELU_HEATMAP["Weighted Combination + ReLU<br/><i>2D Spatial Activation Map (7 × 7)</i>"]
+        JET_OVERLAY["Min-Max Rescale & Jet Colormap<br/><i>Alpha Blended (max 60%) to 224 × 224 PNG</i>"]
+        HEURISTIC_EV["Heuristic UI Evidence Generators<br/><i>Vessel Mask, Disc/Fovea, Edge Lesions</i>"]
+    end
+
+    subgraph OutputPayload["6. Output Serialization & Clinical Review"]
+        JSON_PAYLOAD["Structured JSON Response<br/><i>Probabilities, Grad-CAM Base64, Flags</i>"]
+        PERSIST_DB["Prisma Persistence<br/><i>JSON snapshot in Screening.aiResult</i>"]
+        DOC_QUEUE["Clinical Review Queue<br/><i>Ophthalmologist Final Decision</i>"]
+    end
+
+    %% Pipeline Flow
+    RAW --> MIME_CHECK
+    MIME_CHECK -- Invalid --> REJECT_MIME
+    MIME_CHECK -- Valid --> PIL_DECODE
+    PIL_DECODE --> RESIZE
+    RESIZE --> FLOAT_CONV
+    FLOAT_CONV --> TENSOR_EXPAND
+    TENSOR_EXPAND --> EMBEDDED_NORM
+    EMBEDDED_NORM --> BACKBONE
+    BACKBONE --> SWISH_HEAD
+    SWISH_HEAD --> POOL_LOGITS
+    POOL_LOGITS --> SOFTMAX
+
+    SOFTMAX --> ARGMAX
+    SOFTMAX --> REF_CHECK
+    SOFTMAX --> CONF_CHECK
+
+    REF_CHECK -- Yes --> IS_REF_TRUE
+    REF_CHECK -- No --> IS_REF_FALSE
+    CONF_CHECK -- Yes --> IS_LOW_CONF
+
+    SWISH_HEAD -.-> GRADCAM_TAPE
+    POOL_LOGITS -.-> GRADCAM_TAPE
+    GRADCAM_TAPE --> GAP_WEIGHTS
+    GAP_WEIGHTS --> RELU_HEATMAP
+    RELU_HEATMAP --> JET_OVERLAY
+
+    PIL_DECODE -.-> HEURISTIC_EV
+
+    ARGMAX --> JSON_PAYLOAD
+    IS_REF_TRUE --> JSON_PAYLOAD
+    IS_REF_FALSE --> JSON_PAYLOAD
+    IS_LOW_CONF --> JSON_PAYLOAD
+    JET_OVERLAY --> JSON_PAYLOAD
+    HEURISTIC_EV --> JSON_PAYLOAD
+
+    JSON_PAYLOAD --> PERSIST_DB
+    PERSIST_DB --> DOC_QUEUE
+
+    classDef ingestion fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,color:#1e1b4b
+    classDef preproc fill:#fdf4ff,stroke:#c084fc,stroke-width:1.5px,color:#3b0764
+    classDef model fill:#f5efff,stroke:#815ac7,stroke-width:1.5px,color:#2d1b4e
+    classDef decision fill:#fff7ed,stroke:#ea580c,stroke-width:1.5px,color:#7c2d12
+    classDef xai fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#451a03
+    classDef output fill:#f0fdf4,stroke:#22c55e,stroke-width:1.5px,color:#14532d
+
+    class RAW,MIME_CHECK,REJECT_MIME,PIL_DECODE ingestion
+    class RESIZE,FLOAT_CONV,TENSOR_EXPAND preproc
+    class EMBEDDED_NORM,BACKBONE,SWISH_HEAD,POOL_LOGITS,SOFTMAX model
+    class ARGMAX,REF_CHECK,CONF_CHECK,IS_REF_TRUE,IS_REF_FALSE,IS_LOW_CONF decision
+    class GRADCAM_TAPE,GAP_WEIGHTS,RELU_HEATMAP,JET_OVERLAY,HEURISTIC_EV xai
+    class JSON_PAYLOAD,PERSIST_DB,DOC_QUEUE output
 ```
 
+---
+
+### Pipeline Execution Stages
+
+1. **Bilateral Input Validation:** The endpoint receives multipart form data containing `leftEye` and `rightEye`. Magic byte sniffing validates that uploads belong to `image/jpeg`, `image/png`, `image/bmp`, or `image/tiff`.
+2. **Channel Normalization:** Images are decoded via PIL into a 3-channel RGB `uint8` NumPy array. Grayscale inputs are replicated across 3 channels; RGBA inputs have their alpha channel stripped.
+3. **Spatial Rescaling:** Inputs are resized to $224 \times 224$ pixels using bilinear interpolation.
+4. **Internal Network Normalization:** The input tensor is converted to `float32` retaining the $[0.0, 255.0]$ range. The V2 architecture embeds native normalization layers (`rescaling` dividing by 255 followed by a `normalization` layer applying channel-wise ImageNet z-score normalization).
+5. **Backbone Execution:** The tensor is forwarded through the EfficientNetB0 backbone (238 layers comprising inverted residual MBConv blocks).
+6. **Feature Map Interception:** Activations from the final spatial convolutional layer (`top_activation`, shape $7 \times 7 \times 1280$) are tapped for Grad-CAM explainability.
+7. **Classification & Scoring:** The pooled features pass through the dense layer `dr_classifier` yielding 5 unnormalized logits, followed by softmax activation producing the 5-class probability vector $\mathbf{p} = [p_0, p_1, p_2, p_3, p_4]$.
+8. **Triage Stratification:** Risk flags (`isReferable` and `isLowConfidence`) are computed using threshold parameters defined in `model_config.json`.
+9. **Visual Artifact Encoding:** Grad-CAM heatmaps and heuristic structural overlays are encoded as base64 data URLs (`data:image/png;base64,...`) and bundled into the JSON response.
 
 ---
+
+## Inference Service Contract
+
+The Python inference service runs on port `8000` and adheres to a strict HTTP API contract.
+
+### API Endpoints
+
+| Method | Path | Request Body | Description |
+|---|---|---|---|
+| `GET` | `/health` | None | Returns service liveness, active provider, and loaded model name |
+| `POST` | `/analyze` | `multipart/form-data` (`leftEye`, `rightEye`) | Primary bilateral screening endpoint returning predictions and heatmaps |
+| `POST` | `/analyze/single` | `multipart/form-data` (`file`, optional `override_class`) | Legacy single-image endpoint for diagnostic verification and testing |
+
+### Input Contract
+
+- **Supported Formats:** JPEG, PNG, BMP, TIFF.
+- **Color Space:** 3-channel RGB (grayscale auto-replicated, alpha channels dropped).
+- **Target Spatial Dimension:** $224 \times 224$ pixels.
+- **Numerical Type:** `float32` input in the range $[0.0, 255.0]$.
+- **Batch Dimension:** Single-image batch shape $(1, 224, 224, 3)$.
+
+### Model Execution
+
+- **Loaded Weights:** `model/production/V2/DR_EfficientNetB0_V2.keras`
+- **Model Load Time:** $\approx 0.48$ seconds on startup (persisted in container memory).
+- **Inference Latency:** $\approx 45 \text{ ms}$ per eye on GPU; $\approx 180 \text{ ms}$ per eye on modern 4-core CPU.
+- **Gradient Computation:** Executed via an isolated `tf.keras.Model` subgraph tapping `top_activation` and `dr_classifier`.
+
+### Output Schema
+
+The `/analyze` endpoint returns independent, laterally matched results for both eyes:
+
+```json
+{
+  "leftEye": {
+    "success": true,
+    "prediction": {
+      "classIndex": 2,
+      "label": "Moderate",
+      "confidence": 0.8421
+    },
+    "probabilities": [0.0512, 0.0821, 0.8421, 0.0145, 0.0101],
+    "isReferable": true,
+    "isLowConfidence": false,
+    "gradCam": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "qualityEvidence": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "vesselEvidence": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "discFoveaEvidence": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "lesionEvidence": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+  },
+  "rightEye": {
+    "success": true,
+    "prediction": {
+      "classIndex": 0,
+      "label": "No DR",
+      "confidence": 0.9812
+    },
+    "probabilities": [0.9812, 0.0114, 0.0041, 0.0018, 0.0015],
+    "isReferable": false,
+    "isLowConfidence": false,
+    "gradCam": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "qualityEvidence": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "vesselEvidence": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "discFoveaEvidence": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "lesionEvidence": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+  }
+}
+```
+
+### Uncertainty & Calibration Notice
+
+The values in `probabilities` are raw softmax normalization scores:
+
+$$p_i = \frac{e^{z_i}}{\sum_{j=0}^{4} e^{z_j}}$$
+
+> [!WARNING]
+> While softmax values sum to $1.0$, they are uncalibrated model scores and must not be treated as true Bayesian posterior probabilities of disease presence. When the highest score is below $0.50$ (`isLowConfidence = true`), the system explicitly flags the case for specialist review due to high diagnostic uncertainty.
+
+---
+
+## Diabetic Retinopathy Classification
+
+### Five-Class Severity Scale
+
+Vision AI adopts the **International Clinical Diabetic Retinopathy (ICDR)** disease severity scale:
+
+| Class | Label | Clinical Features | Action / Clinical Triage |
+|:---:|:---|:---|:---|
+| **0** | **No DR** | Absence of visible diabetic retinal lesions. | Non-referable. Annual routine rescreening. |
+| **1** | **Mild NPDR** | Microaneurysms only. | Non-referable. Routine follow-up (6–12 months). |
+| **2** | **Moderate NPDR** | Microaneurysms, dot/blot hemorrhages, hard exudates, cotton wool spots; less than Severe NPDR. | **Referable DR**. Specialist review within 3–6 months. |
+| **3** | **Severe NPDR** | **4-2-1 Rule:** >20 intraretinal hemorrhages in each of 4 quadrants, definite venous beading in 2+ quadrants, or prominent IRMA in 1+ quadrant. | **Referable DR**. Urgent specialist referral within 2–4 weeks. |
+| **4** | **Proliferative DR (PDR)** | Neovascularization (NVD/NVE), preretinal or vitreous hemorrhage, fibrovascular proliferation. | **Referable DR**. Immediate specialist referral for laser photocoagulation or anti-VEGF therapy. |
+
+---
+
+### Multiclass Grading vs. Binary Referable Screening
+
+A critical distinction in public health screening is the divergence between **multiclass classification** and **binary referable triage**:
+
+1. **Multiclass Objective:** The neural network outputs 5 distinct logits mapped to individual severity grades (0, 1, 2, 3, 4).
+2. **Referable Triage Objective:** Public health workflows prioritize identifying patients requiring specialist intervention. Referable Diabetic Retinopathy (RDR) is defined as any disease severity $\ge \text{Moderate}$ (Classes 2, 3, and 4).
+
+The referable probability $P(\text{Referable})$ is calculated by summing the tail probabilities:
+
+$$P(\text{Referable}) = \sum_{c=2}^{4} p_c = p_{\text{Moderate}} + p_{\text{Severe}} + p_{\text{Proliferative}}$$
+
+---
+
+### Threshold Configuration & Evaluation Origins
+
+In `model/config/model_config.json`, the triage behavior is governed by specific thresholds:
+
+```json
+"referable_dr": {
+    "definition": "Moderate + Severe + Proliferative DR",
+    "non_referable_classes": [0, 1],
+    "referable_classes": [2, 3, 4],
+    "optimized_threshold": 0.20798,
+    "default_threshold": 0.5,
+    "legacy_threshold": 0.440134
+}
+```
+
+- **Optimized Threshold ($0.20798$):** The active production threshold. In rural screening, the cost of a false negative (missing sight-threatening DR) is catastrophic, whereas a false positive merely results in an ophthalmologist review. This threshold was mathematically optimized on validation curves to boost sensitivity above $95\%$ on referable grades.
+- **Legacy Threshold ($0.440134$):** Recorded during early model calibration experiments prior to the V2 threshold optimization. Retained in the configuration for historical provenance and benchmark reproducibility.
+- **Default Threshold ($0.50$):** Standard balanced threshold used for non-calibrated baseline models.
+- **Low Confidence Threshold ($0.50$):** If $\max_{c \in [0, 4]} p_c < 0.50$, the system flags `isLowConfidence = true`, signaling to the doctor that the model struggled to assign a definitive grade.
+
+---
+
+## Image Preprocessing and Quality Assessment
+
+### Tensor Preprocessing Contract
+
+The preprocessing pipeline ensures mathematical parity between the original training conditions and the live production inference service:
+
+```python
+# inference_service/main.py Preprocessing Implementation
+def _preprocess(self, image_rgb_uint8: np.ndarray) -> tf.Tensor:
+    # 1. Resize to 224x224 using Bilinear Interpolation
+    img = Image.fromarray(image_rgb_uint8, mode="RGB")
+    img = img.resize((224, 224), Image.BILINEAR)
+    
+    # 2. Cast to float32 preserving [0.0, 255.0] range
+    arr = np.array(img, dtype=np.float32)
+    
+    # 3. Add batch dimension -> (1, 224, 224, 3)
+    return tf.constant(arr[np.newaxis])
+```
+
+### Embedded Model Normalization
+
+Unlike models that require manual $[0, 1]$ rescaling or external mean subtraction, `DR_EfficientNetB0_V2.keras` contains native Keras preprocessing layers:
+
+1. **`rescaling` Layer:** Computes $x_{\text{scaled}} = \frac{x}{255.0}$, mapping $[0.0, 255.0] \to [0.0, 1.0]$.
+2. **`normalization` Layer:** Applies channel-wise standardization using ImageNet parameters:
+   $$\mu = [0.485, 0.456, 0.406], \quad \sigma^2 = [0.229^2, 0.224^2, 0.225^2]$$
+   $$x_{\text{norm}} = \frac{x_{\text{scaled}} - \mu}{\sigma}$$
+
+This architectural design eliminates discrepancies between development and production inference environments.
+
+---
+
+### Heuristic Evidence Visualizations
+
+To assist ophthalmologists in verifying anatomical structures, the inference service executes lightweight visual heuristic generators (`inference_service/evidence_generator.py`):
+
+1. **Contrast Enhancement (`qualityEvidence`):** Enhances image contrast ($1.5\times$) and color saturation ($1.2\times$) using PIL enhancement filters to reveal subtle subretinal details.
+2. **Vessel Segmentation Mask (`vesselEvidence`):** Extracts the retinal vasculature by inverting the green channel ($255 - G$), applying a large Gaussian high-pass filter ($\sigma = 15$) to eliminate background illumination gradients, and isolating vascular structures above the 92nd percentile intensity.
+3. **Optic Disc & Fovea Marker (`discFoveaEvidence`):** Applies multi-scale spatial blurring to estimate the optic disc (brightest macular landmark, highlighted with a yellow boundary) and the foveal avascular zone (central dark landmark, highlighted with a cyan boundary).
+4. **Lesion Highlight Map (`lesionEvidence`):** Computes high-pass gradient edges colorized in red and alpha-blended ($50\%$) with the original fundus image to highlight abrupt textural changes.
+
+> [!NOTE]
+> **Heuristic Boundary Disclaimer:** These four visual generators are exploratory heuristic filters designed solely as UI inspection aids in the doctor portal. They are **not** deep learning segmentation networks or clinically certified lesion segmentations.
+
+---
+
+### MATLAB Experimental Image Processing
+
+In the research repository (`matlab/algorithms/`), advanced image-processing functions are maintained for comparative research:
+
+- `preprocessFundus.m`: Reference MATLAB implementation verifying resize and `dlarray` format (`SSC` layout).
+- `algorithms/enhancement/`: Research scripts for adaptive CLAHE and illumination correction.
+- `algorithms/quality/`: Experimental focus and illumination assessment algorithms.
+
+---
+
+## Explainable AI: Grad-CAM
+
+Vision AI incorporates **Gradient-weighted Class Activation Mapping (Grad-CAM)** to provide visual explanations of model predictions.
+
+<div align="center">
+<img src="frontend/public/evidence/gradcam_sample.png" alt="Grad-CAM Visualization" width="70%" style="border-radius: 8px;" onerror="this.style.display='none'" />
+<br /><sub>Class Activation Mapping highlighting regions of diagnostic interest.</sub>
+</div>
+
+### Mathematical Formulation
+
+Grad-CAM computes the importance of each convolutional feature map by calculating the gradients of the target class score with respect to the spatial activation map.
+
+Let $A^k \in \mathbb{R}^{U \times V}$ represent the $k$-th feature map of the target convolutional layer (for our model, $U = 7, V = 7, K = 1280$).
+
+1. **Neuron Importance Weights ($\alpha_k^c$):**
+   The importance weight $\alpha_k^c$ for class $c$ and feature map $k$ is calculated via global average pooling of the gradients:
+
+   $$\alpha_k^c = \frac{1}{Z} \sum_{i=1}^{U} \sum_{j=1}^{V} \frac{\partial y^c}{\partial A_{ij}^k}$$
+
+   where $Z = U \times V = 49$ is the spatial area, and $y^c$ is the pre-softmax score (logit) for class $c$.
+
+2. **Localization Map ($L_{\mathrm{Grad-CAM}}^c$):**
+   A weighted combination of forward activation maps is computed, followed by a Rectified Linear Unit (ReLU) to isolate features that have a positive influence on the target class score:
+
+   $$L_{\mathrm{Grad-CAM}}^c = \operatorname{ReLU}\left( \sum_{k=1}^{K} \alpha_k^c A^k \right)$$
+
+---
+
+### Gradient Computation on Pre-Softmax Logits
+
+A crucial implementation detail in `inference_service/main.py`:
+
+```python
+# Gradient calculation on pre-softmax logits ('dr_classifier')
+self._grad_model = tf.keras.Model(
+    inputs=self._model.input,
+    outputs=[
+        self._model.get_layer("top_activation").output,  # 7x7x1280
+        self._model.get_layer("dr_classifier").output,   # 5 logits
+    ],
+)
+```
+
+> [!TIP]
+> **Preventing Gradient Saturation:** Computing gradients with respect to post-softmax probabilities $p_c$ causes vanishing gradients when the model is highly confident ($p_c \to 1.0$), because $\frac{\partial p_c}{\partial z_c} = p_c(1 - p_c) \to 0$. Vision AI computes gradients using the **pre-softmax logit** ($y^c = z_c$), ensuring stable, non-vanishing gradient attribution across all confidence levels.
+
+---
+
+### Colormap & Alpha Blending
+
+1. **Spatial Rescaling:** The $7 \times 7$ activation map is normalized to $[0.0, 1.0]$ and upsampled to $224 \times 224$ pixels using bilinear interpolation.
+2. **Color Mapping:** The normalized map is passed through the Matplotlib `jet` colormap, generating a 3-channel RGB heatmap.
+3. **Adaptive Alpha Blending:** To preserve underlying retinal vessel and lesion morphology, the overlay opacity is scaled dynamically with activation intensity (maximum $60\%$ opacity at peak activation):
+
+   $$\text{Overlay} = (\text{Heatmap} \times \alpha) + (\text{Fundus}_{\text{original}} \times (1 - \alpha))$$
+   $$\text{where } \alpha = \text{Heatmap}_{\text{normalized}} \times 0.60$$
+
+---
+
+### Numerical Stability & Validation
+
+The implementation incorporates strict numerical safeguards:
+
+- **Flat Activation Guard:** If an image produces uniform activation ($h_{\max} == h_{\min}$), the algorithm returns a zeroed heatmap rather than dividing by zero.
+- **NaN / Inf Check:** All tensor values are verified using `np.isfinite()`. Any non-finite values trigger an immediate runtime exception.
+
+---
+
+### Clinical Safety Boundaries
+
+> [!CAUTION]
+> **Diagnostic Limitation:** Grad-CAM illustrates spatial regions that correlated with the model's classification score. It is **not** a ground-truth lesion segmentation, does not delineate clinical lesion boundaries, and must never be interpreted as definitive evidence of pathology without ophthalmologist confirmation.
+
+---
+
+## Model Training and Evaluation
+
+### Training Workflow & Fine-Tuning Setup
+
+The production model `DR_EfficientNetB0_V2.keras` was trained via two-stage transfer learning using an **EfficientNetB0** backbone:
+
+1. **Backbone Architecture:** 238 layers, including 16 Mobile Inverted Bottleneck Conv (MBConv) blocks with depthwise separable convolutions and Squeeze-and-Excitation (SE) optimization.
+2. **Phase 1 — Feature Transfer:** The base network was initialized with ImageNet pre-trained weights and frozen (`trainable = False`). A custom classification head (`top_activation` $\to$ GlobalAveragePooling2D $\to$ Dropout $\to$ Dense 5) was trained.
+3. **Phase 2 — Deep Fine-Tuning:** The top 30 layers (including the final MBConv blocks and classification head) were unfrozen for fine-tuning, while the lower 208 layers remained frozen to preserve low-level edge and texture representations.
+4. **Optimization:** Trained using the Adam optimizer with an initial learning rate of $\eta = 1 \times 10^{-5}$ and categorical cross-entropy loss.
+
+---
+
+### Historical Fine-Tuning Benchmarks
+
+During model development, the following performance metrics were recorded on the fine-tuning development cohort:
+
+| Parameter | Historical Development Metric |
+|---|---|
+| **Development Cohort** | 3,662 total fundus images (APTOS / Kaggle dataset split) |
+| **Partitioning** | 2,929 Training images (80%) / 733 Validation images (20%) |
+| **Validation Accuracy** | **91.62%** |
+| **Weighted F1-Score** | **94.78%** |
+| **Referable DR Sensitivity** | >95% (at optimized threshold 0.20798) |
+
+> [!NOTE]
+> **Historical Record Context:** These figures reflect historical benchmarks achieved during fine-tuning on the development split. In adherence to strict scientific documentation standards, these metrics are presented as developmental records and should not be construed as prospective clinical trial performance on Indian patient populations.
+
+---
+
+### Production Artifact Technical Verification
+
+The deployed artifact `model/production/V2/DR_EfficientNetB0_V2.keras` undergoes automated technical verification recorded in `model/production/V2/verification_report.json`:
+
+```json
+{
+  "model_path": ".../model/production/V2/DR_EfficientNetB0_V2.keras",
+  "test_timestamp": "2026-09-13T05:58:57Z",
+  "checks": {
+    "normalization_equivalence": "PASS",
+    "model_load": "PASS",
+    "load_time_s": 0.48,
+    "layer_count": 240,
+    "per_image_inference": "PASS",
+    "gradcam": "PASS",
+    "gradcam_shape": [224, 224],
+    "gradcam_has_activation": true,
+    "prediction_diversity": "PASS"
+  }
+}
+```
+
+The verification suite validates:
+- Model loads into memory within $0.5$ seconds.
+- Normalization layer reproduces exact mathematical z-score equivalence.
+- Inference succeeds across benchmark images representing all five severity grades.
+- Grad-CAM produces non-trivial spatial activations scaled to $[224, 224]$.
+- Prediction diversity passes without class collapse.
+
+---
+
+### Prospective Multi-Center Evaluation Framework
+
+To prepare Vision AI for production clinical deployment across rural district health systems, prospective multi-center validation must be conducted according to this evaluation protocol:
+
+| Metric | Target Standard | Clinical Rationale |
+|---|:---:|---|
+| **RDR Sensitivity** | $\ge 92.0\%$ | Minimizes false negatives; ensures patients with sight-threatening retinopathy are referred. |
+| **RDR Specificity** | $\ge 85.0\%$ | Prevents overburdening tertiary ophthalmologists with healthy referrals. |
+| **Macro F1-Score** | $\ge 0.85$ | Unweighted average ensuring severe and proliferative classes (low frequency) are accurately identified. |
+| **Expected Calibration Error (ECE)** | $< 0.05$ | Ensures model confidence reflects true probability of disease. |
+| **Cross-Camera Robustness** | $\Delta F1 < 5\%$ | Verifies generalization across diverse fundus cameras (handheld vs. tabletop). |
+
+---
+
+## Model Artifact Lifecycle and Interoperability
+
+To bridge MATLAB research with the production Python inference stack, model artifacts follow a structured release and promotion lifecycle.
+
+### Model Promotion Workflow
+
+```mermaid
+flowchart TD
+    A["Dataset Acquisition & Quality Filtering<br/><i>APTOS 2019 / Kaggle Fundus Repositories</i>"] --> B["Label Harmonization & Class Balancing<br/><i>5 ICDR Diabetic Retinopathy Grades</i>"]
+    B --> C["Model Training & Transfer Learning<br/><i>EfficientNetB0 Backbone, Frozen Stage + Fine-Tuning</i>"]
+    C --> D["Validation & Metric Computation<br/><i>Per-class F1, Confusion Matrix, Sensitivity/Specificity</i>"]
+    D --> E{"Meets Research Thresholds?<br/><i>Macro F1 > 0.85, Referable Sens > 0.90</i>"}
+    
+    E -- No --> C
+    E -- Yes --> F["Candidate Model Export<br/><i>Keras (.keras) / MATLAB (.mat)</i>"]
+    
+    F --> G["Cross-Framework Parity & Verification Suite<br/><i>model/production/V2/verification_report.json</i>"]
+    
+    subgraph ParityChecks["Mandatory Verification Checks"]
+        G1["Input Contract Verification<br/><i>224 × 224 × 3, uint8 → float32 [0, 255]</i>"]
+        G2["Normalization Equivalence<br/><i>Embedded z-score matching verified</i>"]
+        G3["Numerical Output Concordance<br/><i>Max logit discrepancy < 1e-4 on test set</i>"]
+        G4["Grad-CAM Layer Traceability<br/><i>top_activation ↔ head|MulLayer verified</i>"]
+        G5["Class Ordering Alignment<br/><i>Index 0: No DR ... Index 4: Proliferative</i>"]
+    end
+    G --- ParityChecks
+    
+    ParityChecks --> H{"Passes Full Parity Suite?"}
+    H -- No --> I["Investigate Layer Weights / Preprocessing Mismatch"]
+    I --> F
+    H -- Yes --> J["Versioned Production Deployment<br/><i>model/production/V{N}/DR_EfficientNetB0_V{N}.keras</i>"]
+    J --> K["Config & Threshold Update<br/><i>model/config/model_config.json</i>"]
+    K --> L["Dockerized FastAPI Service Load<br/><i>Internal Healthcheck: GET /health (status: healthy)</i>"]
+
+    classDef research fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,color:#1e1b4b
+    classDef verification fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#451a03
+    classDef production fill:#f0fdf4,stroke:#22c55e,stroke-width:1.5px,color:#14532d
+    classDef failure fill:#fee2e2,stroke:#ef4444,stroke-width:1.5px,color:#7f1d1d
+
+    class A,B,C,D,E,F research
+    class G,G1,G2,G3,G4,G5,H verification
+    class J,K,L production
+    class I failure
+```
+
+---
+
+### Cross-Framework Parity Requirements
+
+Exporting models between MATLAB Deep Learning Toolbox (`dlnetwork`) and Python TensorFlow/Keras requires verifying five compatibility properties:
+
+1. **Input Tensor Preprocessing Parity:** MATLAB `preprocessFundus.m` formats images as `SSC` (Spatial-Spatial-Channel) with `single` values $[0, 255]$. Python `PythonV2Provider` uses `(1, 224, 224, 3)` `float32` values $[0, 255]$.
+2. **Layer Topology Equivalence:** The Keras `top_activation` layer corresponds to the MATLAB `efficientnet-b0|model|head|MulLayer` Swish multiplication layer.
+3. **Logits vs. Softmax Output:** The production Keras model exposes `dr_classifier` for Grad-CAM gradient backpropagation and `softmax` for probability extraction. The MATLAB reference model uses `DR_Softmax`.
+4. **Numerical Concordance:** Model predictions across 15 standard test cases must match within an absolute tolerance of $\epsilon < 10^{-4}$.
+5. **Production Isolation:** Under no circumstances are new experimental weights directly copied into `model/production/V2/` without passing the parity verification suite.
+
+---
+
+## Clinical Decision and Review Workflow
+
+Vision AI enforces an auditable, doctor-governed clinical review pipeline.
+
+### End-to-End Clinical Data Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Staff as Screening Staff (Clinic)
+    participant UI as React Web Portal
+    participant API as Node.js Gateway & Express API
+    participant FS as Local Filesystem Volume (/uploads)
+    participant DB as PostgreSQL (Prisma ORM)
+    participant ML as FastAPI Inference Service
+    actor Doctor as Reviewing Ophthalmologist
+
+    Staff->>UI: Register patient & select Left/Right eye fundus images
+    UI->>API: POST /api/screening (Multipart: leftEye, rightEye, patientId)
+    API->>FS: Persist raw images to /uploads/screenings/{id}/
+    API->>DB: INSERT into Screening (status: PROCESSING)
+    API->>ML: POST /analyze (Forward leftEye & rightEye streams)
+    
+    activate ML
+    Note over ML: Bilateral Inference<br/>EfficientNetB0 forward pass<br/>Grad-CAM generation<br/>Heuristic evidence extraction
+    ML-->>API: Return JSON (Predictions, Probs, Heatmap Base64, Flags)
+    deactivate ML
+
+    API->>DB: UPDATE Screening SET aiResult = JSON, status = PENDING_REVIEW
+    API-->>UI: Return screening confirmation (Status: PENDING_REVIEW)
+
+    Note over Doctor,UI: Asynchronous Doctor-in-the-Loop Review
+    Doctor->>UI: Access clinical queue (/doctor/queue)
+    UI->>API: GET /api/doctor/queue
+    API->>DB: Query Screenings WHERE status = PENDING_REVIEW
+    DB-->>API: Screening records with patient metadata & aiResult
+    API-->>UI: Return review list
+    Doctor->>UI: Open bilateral examination view
+    UI->>API: Fetch raw images from /uploads and aiResult visual heatmaps
+    
+    Doctor->>UI: Submit clinical review (Decision, Notes, Recommendation, Follow-up)
+    UI->>API: POST /api/doctor/review/{screeningId}
+    API->>DB: INSERT into ClinicalReview (doctorDecision, notes, etc.)
+    API->>API: Execute PDFKit report generator (sign-off + QR code)
+    API->>FS: Save immutable report to /reports/screening_{id}.pdf
+    API->>DB: INSERT into ClinicalReport (storageKey) & UPDATE Screening status = COMPLETED
+    API-->>UI: Confirmation (Report ready for distribution)
+```
+
+---
+
+### Doctor-in-the-Loop Governance
+
+1. **AI Output Is Non-Binding:** The initial model assessment (predicted grade, referable flag, Grad-CAM attention) serves solely to prioritize the clinical queue and highlight regions of interest.
+2. **Full-Resolution Verification:** The ophthalmologist reviews the uncompressed, full-resolution retinal photographs alongside the AI overlays.
+3. **Autonomous Clinician Authority:** The doctor may confirm, refine, or completely overturn the AI triage assessment.
+4. **Legally Binding Record:** Only the doctor's review (`ClinicalReview`) and the resulting signed clinical report constitute a legally valid diagnostic record.
+
+---
+
+### Data Persistence Separation
+
+| Storage Target | Engine | Entities Persisted |
+|---|---|---|
+| **Database** | PostgreSQL 16 (Prisma ORM) | User accounts, hashed credentials, RBAC roles, patient demographics, screening states, `aiResult` JSON snapshots, clinical review decisions, audit logs. |
+| **Image Storage** | Local Disk Volume (`/uploads`) | Raw, uncompressed bilateral fundus images (`.jpg`, `.png`). |
+| **Report Storage** | Local Disk Volume (`/reports`) | Generated, digitally signed PDF clinical reports. |
+
+---
+
+## MATLAB / Simulink Research Pipeline
+
+### Isolated Research Architecture
+
+The repository contains an extensive MATLAB and Simulink suite completely isolated from the production Python web application.
+
+> [!IMPORTANT]
+> **Production vs. Research Isolation:** The live web application executes pure Python/TensorFlow inference in Docker. The MATLAB research codebase operates independently for algorithm research, training experimentation, and healthcare logistics simulation.
+
+```text
+Production Web Stack (Docker Compose)          MATLAB / Simulink Research Stack
+┌──────────────────────────────────────┐       ┌─────────────────────────────────────┐
+│ React Frontend (Port 3000)          │       │ matlab/algorithms/                  │
+│ Node.js / Express API (Port 8080)   │       │   (preprocessing, enhancement)      │
+│ FastAPI Inference Engine (Port 8000)│       │ matlab/simulink/                    │
+│   DR_EfficientNetB0_V2.keras         │       │   (DRScreeningSystem.slx)           │
+│ PostgreSQL 16 Database (Port 5432)   │       │ matlab/training/                    │
+└──────────────────────────────────────┘       │   (contributor workspace & scripts) │
+                                               └─────────────────────────────────────┘
+```
+
+---
+
+### Real MATLAB Inference Reference
+
+The repository maintains native MATLAB functions that parallel the production pipeline:
+
+- [`matlab/preprocessing/preprocessFundus.m`](matlab/algorithms/preprocessing/preprocessFundus.m): Loads fundus images via `imread()`, ensures 3-channel RGB, resizes to $224 \times 224$ with bilinear interpolation, and formats output as a `single` precision `dlarray` with `SSC` layout.
+- [`matlab/inference/loadDRModel.m`](matlab/inference/loadDRModel.m): Loads the reference artifact `model/reference/DR_EfficientNetB0_V2.mat` (289 layers) and model configuration with persistent session caching.
+- [`matlab/inference/predictDR.m`](matlab/inference/predictDR.m): Executes forward inference on `dlnetwork`, extracts 5-class softmax probabilities, and applies `optimized_threshold` ($0.20798$) for referability.
+- [`matlab/explainability/generateGradCAM.m`](matlab/explainability/generateGradCAM.m): Computes Grad-CAM on `efficientnet-b0|model|head|MulLayer` within a `dlfeval` execution context.
+- [`matlab/reporting/runScreening.m`](matlab/reporting/runScreening.m): Orchestrates end-to-end execution of preprocessing, inference, and explainability in MATLAB.
+
+---
+
+### Operational Simulink Simulation
+
+The `matlab/simulink/` directory hosts a discrete-event operational simulation framework for modeling district-level screening workflows:
+
+- **Simulation Models:** `DRScreeningSystem.slx` (clinic-level screening flow) and `DRDistrictSystem.slx` (district network screening triage).
+- **Custom Blocks (17 implementations):** `sim_PatientArrival.m`, `sim_NetworkDelay.m`, `sim_PatientQueue.m`, `sim_AIResource.m`, `sim_DoctorQueue.m`, `sim_DoctorResource.m`, `sim_DecisionRouter.m`.
+- **Deterministic Hashing for Routing:** To test queue congestion, doctor fatigue, and network delay without fabricating medical data, simulation AI blocks (`simulinkAIEngine.m`, `simulinkReferableDecision.m`) use deterministic modulo hashing of patient IDs to route cases through Non-Referable, Referable, and Recapture queues.
+- **Capacity Analysis:** Used to determine optimal doctor-to-clinic ratios and bandwidth constraints across rural primary health centers.
+
+---
+
+### MATLAB Contributor Workspace
+
+A standardized training contribution area is established under `matlab/training/`:
+
+- **Main Training Scripts:** `matlab/training/scripts/`
+- **Starter Template:** [`matlab/training/scripts/train_dr_model.m`](matlab/training/scripts/train_dr_model.m) (contains documented `[TODO]` placeholders for configuration, loading, architecture setup, training options, and evaluation).
+- **Reusable Functions:** `matlab/training/functions/`
+- **Configurations:** `matlab/training/configs/`
+- **Contributor Guide:** Fully documented in [`matlab/training/README.md`](matlab/training/README.md).
+
+---
+
 
 ## Project Structure
 
@@ -446,31 +1155,16 @@ POST /analyze
 
 ---
 
-## Platform
+## Platform Portals
 
-The unified React application provides distinct, role-based portals:
+The unified React application provides distinct, role-based portals configured for rural screening operations:
 
-| Portal | Purpose |
-|---|---|
-| **Admin Dashboard** | System-wide metrics, facility mapping, staff/doctor provisioning |
-| **Doctor Dashboard** | Clinical review queue, AI assessment viewer, and diagnostic reporting |
-| **Staff Portal** | Patient registration and bilateral fundus image uploading at rural sites |
-| **Patient Portal** | Secure retrieval of finalized clinical reports |
-
----
-
-## Features
-
-### Core Capabilities
-
-| Feature | Description |
-|---|---|
-| AI Triage Inference | Real-time 5-class DR classification via EfficientNetB0 |
-| Bilateral Workflow | Left and Right eye independently processed and tracked |
-| Explainability | Grad-CAM heatmaps overlaid on original fundus images |
-| Secure Review Pipeline | Doctor-in-the-loop report authorization |
-| Immutable Records | Final clinical reports are securely generated and stored |
-| Rural Simulation | MATLAB/Simulink models for facility resource planning |
+| Portal | Intended User | Key Responsibilities | Access Route |
+|---|---|---|---|
+| **Staff Portal** | Rural PHC Health Worker | Patient demographic entry, bilateral fundus capture (`leftEye`, `rightEye`), real-time upload progress, screening dispatch. | `/staff` |
+| **Doctor Review Portal** | Remote Ophthalmologist | Clinical triage queue sorted by risk level, high-resolution bilateral fundus review, interactive Grad-CAM heatmap toggles, diagnostic sign-off. | `/doctor` |
+| **Admin Dashboard** | District Health Officer / Engineer | District screening metrics, facility provisioning, staff and doctor account approvals, system audit logs. | `/admin` |
+| **Patient Portal** | Patient / Guardian | Secure retrieval of completed clinical screening reports and specialist follow-up instructions via mobile phone verification. | `/patient` |
 
 <br />
 
@@ -481,37 +1175,16 @@ The unified React application provides distinct, role-based portals:
 
 ---
 
-## Doctor-in-the-Loop
+## Operational Simulation
 
-AI Prediction ≠ Final Clinical Decision.
-
-The AI produces an assistive screening assessment to prioritize review queues and highlight regions of interest. The remote reviewing doctor assesses:
-- Raw, full-resolution fundus images
-- Eye-specific AI results and classification
-- Grad-CAM attention heatmaps
-- Relevant patient and screening context
-
-The final clinical report is generated exclusively from the completed doctor review workflow, fully overriding the initial AI prediction in the clinical record.
-
----
-
-## Explainability
-
-To build clinical trust, the model utilizes **Grad-CAM** (Gradient-weighted Class Activation Mapping). It visualizes the model's activation and attention associated with its prediction.
-
-**Important Limitation:** Grad-CAM is strictly an attention visualization. It is **NOT** a medically validated lesion segmentation map or ground-truth boundary detector.
-
----
-
-## Simulation
-
-A distinct MATLAB/Simulink component supports the broader rural deployment strategy, completely isolated from the standard web production stack:
+A distinct MATLAB / Simulink operational simulation framework models rural telemedicine triage capacity and bottleneck dynamics across district healthcare networks:
 
 | Property | Value |
 |---|---|
-| Domain | Rural healthcare resource planning |
-| Function | Facility load and triage bottleneck modelling |
-| Stack | MATLAB / Simulink |
+| **Domain** | Rural healthcare resource planning & capacity modeling |
+| **Function** | Patient queue latency, doctor service rates, and bandwidth bottleneck stress-testing |
+| **Simulation Engines** | `DRScreeningSystem.slx`, `DRDistrictSystem.slx` |
+| **Isolation Status** | Fully decoupled from production Python/Docker stack |
 
 <br />
 
