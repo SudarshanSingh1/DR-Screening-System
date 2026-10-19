@@ -136,5 +136,5 @@ Follow Conventional Commits:
 
 1. Open a PR against `develop` (or `main` for hotfixes).
 2. Fill out the [Pull Request Template](.github/pull_request_template.md) completely, including the **Clinical Risk Assessment** checklist.
-3. Ensure CI checks pass.
+3. Ensure local verification checks pass (builds, tests, and linter).
 4. Request review from at least one core engineer and one clinical/domain reviewer where applicable.

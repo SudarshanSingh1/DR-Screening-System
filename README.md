@@ -1067,8 +1067,7 @@ DR-Screening-System/
 │   ├── TESTING.md                        # Testing strategy and guidelines
 │   └── GIT_WORKFLOW.md                   # Git branching and contribution workflow
 │
-├── .github/                              # CI/CD workflows and community templates
-│   ├── workflows/ci.yml                  # Automated quality, build, and test pipeline
+├── .github/                              # Community templates and issue forms
 │   ├── ISSUE_TEMPLATE/                   # Bug, feature, clinical safety, and model eval templates
 │   └── pull_request_template.md          # PR checklist with Clinical Risk Assessment
 ├── CONTRIBUTING.md                       # Comprehensive contributor and clinical guidelines

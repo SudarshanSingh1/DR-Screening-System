@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.0] - 2026-10-19
 
 ### Added
-- **Automated CI Workflows (`.github/workflows/ci.yml`):** Multi-job GitHub Actions pipeline testing frontend build/lint, backend build/test, Python inference compilation/unit tests, and Docker Compose syntax.
 - **GitHub Community Standards:**
   - Pull Request template with dedicated Medical AI & Clinical Risk Assessment checklist.
   - Issue templates for Bug Reports, Feature Requests, Model Evaluations, and Clinical Safety Concerns.
