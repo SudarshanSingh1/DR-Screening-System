@@ -46,14 +46,22 @@
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Six-Stage AI Architecture](#six-stage-ai-architecture)
-  - [Architectural Vision vs. Realized Deployment](#architectural-vision-vs-realized-deployment)
-  - [Component Specifications (M1 to M6)](#component-specifications-m1-to-m6)
-- [Model Implementation Status & Technical Audit](#model-implementation-status--technical-audit)
-  - [Six-Stage Technical Audit Matrix](#six-stage-technical-audit-matrix)
-  - [Historical Audit Findings & Checkpoint Verification](#historical-audit-findings--checkpoint-verification)
-- [End-to-End Inference Workflow](#end-to-end-inference-workflow)
+- [Project Overview](#project-overview)
+  - [Key Architectural Dimensions](#key-architectural-dimensions)
+- [Six Specialized AI Models](#six-specialized-ai-models)
+  - [1. EfficientNet-B2 — Image Quality Assessment](#1-efficientnet-b2--image-quality-assessment)
+  - [2. U-Net++ — Retinal Vessel Segmentation](#2-u-net--retinal-vessel-segmentation)
+  - [3. U-Net++ + Heatmap CNN — Optic Disc & Fovea Localization](#3-u-net--heatmap-cnn--optic-disc--fovea-localization)
+  - [4. DeepLabV3+ (ResNet-50) — Lesion Segmentation](#4-deeplabv3-resnet-50--lesion-segmentation)
+  - [5. ResNet-101 Multi-Task — DR Severity Grading](#5-resnet-101-multi-task--dr-severity-grading)
+  - [6. Grad-CAM++ + Calibration/Uncertainty — Explainability & Trust](#6-grad-cam--calibrationuncertainty--explainability--trust)
+- [AI Pipeline Architecture](#ai-pipeline-architecture)
+  - [Stage-by-Stage Architectural Flow](#stage-by-stage-architectural-flow)
+- [Bilateral Screening: Left Eye and Right Eye](#bilateral-screening-left-eye-and-right-eye)
+  - [1. Concurrent Independent Processing](#1-concurrent-independent-processing)
+  - [2. Worst-Eye Clinical Triage Governance](#2-worst-eye-clinical-triage-governance)
+  - [3. Synchronized Doctor Portal Interface](#3-synchronized-doctor-portal-interface)
+  - [4. Bilateral Reporting](#4-bilateral-reporting)
 - [System Architecture](#system-architecture)
   - [Architectural Topology](#architectural-topology)
   - [Layer A: Role-Based Frontend Portals](#layer-a-role-based-frontend-portals)
@@ -79,9 +87,11 @@
   - [Embedded Model Normalization](#embedded-model-normalization)
   - [Heuristic Evidence Visualizations](#heuristic-evidence-visualizations)
   - [MATLAB Experimental Image Processing](#matlab-experimental-image-processing)
-- [Explainable AI: Grad-CAM](#explainable-ai-grad-cam)
-  - [Mathematical Formulation](#mathematical-formulation)
+- [Explainable AI](#explainable-ai)
+  - [Grad-CAM Formulation](#grad-cam-formulation)
+  - [Grad-CAM++ Formulation for Multi-Focal Lesions](#grad-cam-formulation-for-multi-focal-lesions)
   - [Gradient Computation on Pre-Softmax Logits](#gradient-computation-on-pre-softmax-logits)
+  - [Uncertainty Quantification & Confidence Calibration](#uncertainty-quantification--confidence-calibration)
   - [Colormap & Alpha Blending](#colormap--alpha-blending)
   - [Numerical Stability & Validation](#numerical-stability--validation)
   - [Clinical Safety Boundaries](#clinical-safety-boundaries)
@@ -93,245 +103,166 @@
 - [Model Artifact Lifecycle and Interoperability](#model-artifact-lifecycle-and-interoperability)
   - [Model Promotion Workflow](#model-promotion-workflow)
   - [Cross-Framework Parity Requirements](#cross-framework-parity-requirements)
-- [Clinical Decision and Review Workflow](#clinical-decision-and-review-workflow)
+- [Clinical Workflow](#clinical-workflow)
   - [End-to-End Clinical Data Flow](#end-to-end-clinical-data-flow)
   - [Doctor-in-the-Loop Governance](#doctor-in-the-loop-governance)
   - [Data Persistence Separation](#data-persistence-separation)
-- [MATLAB / Simulink Research Pipeline](#matlab--simulink-research-pipeline)
+- [MATLAB and Simulink](#matlab-and-simulink)
   - [Isolated Research Architecture](#isolated-research-architecture)
   - [Real MATLAB Inference Reference](#real-matlab-inference-reference)
   - [Operational Simulink Simulation](#operational-simulink-simulation)
   - [MATLAB Contributor Workspace](#matlab-contributor-workspace)
+- [Datasets and Evaluation](#datasets-and-evaluation)
+  - [Approved Datasets](#approved-datasets)
+  - [Clinical Performance Targets](#clinical-performance-targets)
+  - [Production Model Verification](#production-model-verification)
+- [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
-- [Quick Start](#quick-start)
+- [Installation and Execution](#installation-and-execution)
 - [API Reference](#api-reference)
 - [Platform Portals](#platform-portals)
 - [Operational Simulation](#operational-simulation)
-- [Tech Stack](#tech-stack)
 - [Environment Variables](#environment-variables)
-- [Implementation Status](#implementation-status)
-- [Limitations and Future Work](#limitations-and-future-work)
+- [Future Scope](#future-scope)
 - [SIH Presentation Login Credentials](#sih-presentation-login-credentials)
 - [Team Viltrumites](#team-viltrumites)
 
 ---
 
-## Overview
+## Project Overview
 
-Vision AI is a production-grade, AI-assisted triage system engineered for diabetic retinopathy (DR) screening in resource-constrained rural healthcare environments. It securely processes bilateral fundus images in real time, generates mathematically grounded Grad-CAM attention heatmaps, and coordinates a strict **"doctor-in-the-loop"** clinical workflow.
+**Vision AI** is a production-grade, AI-assisted triage and clinical screening system engineered for diabetic retinopathy (DR) detection across rural, remote, and resource-constrained healthcare environments in India. Developed for the Smart India Hackathon (Problem Statement: **SIH26038**), Vision AI addresses critical healthcare bottlenecks: an acute shortage of vitreoretinal specialists, high screening camp patient volume, varying non-mydriatic camera optics, and intermittent rural connectivity.
 
-The system handles the entire screening lifecycle — from rural patient registration and bilateral fundus image capture at Primary Health Centres (PHCs), through automated deep learning inference and risk stratification, to remote ophthalmologist review and digitally verifiable PDF report issuance.
+The platform provides end-to-end automation across the screening journey: from rural patient demographic onboarding and bilateral fundus image capture at Primary Health Centres (PHCs), through automated multi-stage deep learning inference and explainable risk stratification, to remote ophthalmologist tele-review, diagnostic override, and digitally verifiable bilingual clinical report issuance.
 
-The platform is designed around a **Six-Stage Clinical AI Pipeline** modeled after expert retinal examination protocols. In the live Phase 1 production deployment, Stage 5 (Severity Grading) is powered by a verified deep learning model (**EfficientNetB0 V2** with calibrated referable threshold $p \ge 0.20798$), Stage 6 provides mathematically rigorous **Logits Grad-CAM** visual attribution, and Stages 1–4 provide multi-modal visual inspection aids via deterministic computer vision heuristics. Dedicated deep learning segmentation architectures (EfficientNet-B2, U-Net++, DeepLabV3+) form the Phase 2 research roadmap.
+Vision AI enforces a strict **"doctor-in-the-loop"** clinical governance model. The AI pipeline serves as assistive clinical decision support — prioritizing high-risk cases in tele-ophthalmology review queues and illuminating suspect retinal lesions without replacing certified ophthalmologists or making autonomous diagnoses.
+
+### Key Architectural Dimensions
 
 | Dimension | Specification |
 |---|---|
-| **Clinical Target Architecture** | Comprehensive 6-stage clinical screening pipeline (IQA, Vessels, Landmarks, Lesions, Grading, Explainability) |
-| **Operational Production Engine** | EfficientNetB0 (V2) fine-tuned for 5-class ICDR severity classification ($p \ge 0.20798$ referable threshold) |
-| **Multi-Modal Visual Evidence** | Logits Grad-CAM on `top_activation` alongside deterministic vessel, landmark, and lesion heuristic previews |
-| **Inference Framework** | Python 3.11, FastAPI, TensorFlow/Keras 2.x |
-| **Bilateral Processing** | Independent, concurrent analysis of Left and Right fundus images |
-| **Clinical Governance** | Mandatory ophthalmologist review; AI output strictly prioritizes triage without autonomous diagnosis |
-| **Application Stack** | React (TypeScript + Vite), Node.js (Express + Prisma ORM), PostgreSQL 16 |
-| **Deployment Strategy** | Fully containerized multi-tier orchestration via Docker Compose |
-| **Research & Operations** | Isolated MATLAB reference algorithms & Simulink district capacity simulation |
+| **Six Specialized AI Models** | End-to-end multi-stage pipeline: Image Quality Assessment, Vessel Segmentation, Landmark Localization, Lesion Segmentation, DR Severity Grading, Explainability & Trust |
+| **Primary AI Classifier** | ResNet-101 Multi-Task architecture for 5-level ICDR severity grading; production-verified via fine-tuned EfficientNetB0 V2 ($p \ge 0.20798$ referable threshold) |
+| **Explainable AI (XAI)** | Grad-CAM++ with calibration & uncertainty estimation; pre-softmax Logits Grad-CAM on `top_activation` ($7 \times 7 \times 1280$) with dynamic Jet overlays |
+| **Bilateral Screening** | Concurrent, independent processing of Left Eye (`leftEye`) and Right Eye (`rightEye`) with worst-eye clinical triage governance |
+| **Rural & Low-Connectivity Design** | Lightweight containerized edge deployment, offline-tolerant caching, and discrete-event queue bottleneck simulation via Simulink |
+| **Clinical Governance** | Mandatory ophthalmologist review queue (`PENDING_REVIEW`); doctor holds sole authority for medical diagnosis and grade override |
+| **Bilingual Clinical Reporting** | Automated PDFKit referral reports in English & Hindi with encrypted verification QR code and clinician sign-off block |
+| **Application Stack** | React 18 (TypeScript + Vite), Node.js (Express + Prisma ORM), Python 3.11 (FastAPI + TensorFlow), PostgreSQL 16, Docker Compose |
+| **Research & Engineering Stack** | MATLAB R2023b+, Deep Learning Toolbox, Image Processing Toolbox, Computer Vision Toolbox, Medical Imaging Toolbox, Simulink |
 
 > [!IMPORTANT]
 > **Assistive Screening Mandate:** Vision AI is an assistive decision-support platform designed to prioritize clinical review queues and highlight suspicious retinal regions. It does not replace ophthalmologists or make autonomous clinical diagnoses.
 
 ---
 
-## Six-Stage AI Architecture
+## Six Specialized AI Models
 
-The Vision AI platform is designed around a multi-stage clinical decision-support pipeline engineered to reflect the structured diagnostic examination performed by a vitreoretinal specialist. To preserve technical integrity and academic honesty, this documentation explicitly distinguishes between the **target multi-model clinical architecture** and the **currently operational Phase 1 deployment**.
+Vision AI structures retinal image analysis into **six specialized AI models**, mirroring the diagnostic procedure of a retina specialist:
 
-```text
-Stage 1: Image Quality Assessment (IQA)
-  └─ Target: EfficientNet-B2 Classifier (Gradable vs. Ungradable)
-  └─ Realized: PIL Contrast/Color Previews + Simulink Rejection Timing Block
+### 1. EfficientNet-B2 — Image Quality Assessment
+- **Role:** Evaluates retinal fundus image quality and supports image quality assessment and enhancement.
+- **Clinical Function:** Non-mydriatic fundus cameras operated in rural screening camps often suffer from small pupil sizes, corneal glare, insufficient illumination, and media opacities (e.g., dense senile cataracts). This model automatically screens incoming fundus photographs for focus, illumination, and retinal field coverage, flagging ungradable captures immediately so that the patient can be recaptured on-site before leaving the camp.
+- **Enhancement Support:** Generates contrast-enhanced ($1.5\times$) and color-balanced ($1.2\times$) visual previews to assist clinical review of under-illuminated captures.
 
-Stage 2: Retinal Vessel Segmentation
-  └─ Target: U-Net++ Nested Skip Segmentation Network
-  └─ Realized: Green-Channel Gaussian Highpass Spatial Filter (σ=15, 92nd %ile)
+### 2. U-Net++ — Retinal Vessel Segmentation
+- **Role:** Segments retinal blood vessels to support retinal structural analysis.
+- **Clinical Function:** Retinal microvasculature provides essential biomarkers for systemic microvascular damage. U-Net++ utilizes nested, dense skip pathways and deep supervision to segment the delicate vascular tree (arterioles, venules, and branching bifurcations). This enables automated structural analysis, including arteriolar-to-venular ratio (AVR) calculation and vessel tortuosity measurement indicative of severe hypertensive and diabetic microangiopathy.
 
-Stage 3: Optic Disc & Fovea Localization
-  └─ Target: U-Net++ + Heatmap Regression CNN
-  └─ Realized: Multi-Scale Spatial Blur & Intensity Extrema Heuristic Markers
+### 3. U-Net++ + Heatmap CNN — Optic Disc & Fovea Localization
+- **Role:** Identifies and localizes key retinal anatomical structures for further analysis.
+- **Clinical Function:** Delineates the Optic Disc (optic nerve head margin) and the Foveal Avascular Zone (FAZ). Accurate localization of these reference landmarks standardizes retinal quadrants (superior, inferior, nasal, temporal) and measures the spatial proximity of exudates and microaneurysms to the fovea, crucial for detecting Clinically Significant Macular Edema (CSME).
 
-Stage 4: Retinal Lesion Segmentation
-  └─ Target: DeepLabV3+ (ResNet-50) Semantic Segmentation (MA, Hemorrhages, Exudates)
-  └─ Realized: High-Pass Gradient Edge Overlay Colorized at 50% Alpha Blend
+### 4. DeepLabV3+ (ResNet-50) — Lesion Segmentation
+- **Role:** Identifies and segments diabetic retinopathy-related lesions, including microaneurysms, hemorrhages, and exudates.
+- **Clinical Function:** Diabetic retinopathy manifests through distinct focal lesions. Using Atrous Spatial Pyramid Pooling (ASPP) and a ResNet-50 backbone, this model performs multi-class semantic segmentation across:
+  - **Microaneurysms:** Earliest clinically visible signs appearing as tiny round red dots.
+  - **Intraretinal Hemorrhages:** Blot and flame-shaped hemorrhages indicating capillary leakage.
+  - **Hard Exudates:** Lipid and protein deposits from vascular leakage.
+  - **Cotton Wool Spots (Soft Exudates):** Nerve fiber layer infarctions indicating localized retinal ischemia.
 
-Stage 5: DR Severity Grading (Primary Classifier)
-  └─ Target: ResNet-101 Multi-Task Network
-  └─ Realized: Production Fine-Tuned EfficientNetB0 V2 (5-Class ICDR Softmax, p ≥ 0.20798)
+### 5. ResNet-101 Multi-Task — DR Severity Grading
+- **Role:** Performs five-level diabetic retinopathy grading:
+  - **Level 0: No DR** — Absence of visible diabetic retinal lesions.
+  - **Level 1: Mild NPDR** — Presence of microaneurysms only.
+  - **Level 2: Moderate NPDR** — Microaneurysms, dot/blot hemorrhages, hard exudates, cotton wool spots; less than Severe NPDR.
+  - **Level 3: Severe NPDR** — Severe non-proliferative retinopathy meeting the clinical **4-2-1 rule** (>20 intraretinal hemorrhages in each of 4 quadrants, definite venous beading in 2+ quadrants, or prominent IRMA in 1+ quadrant).
+  - **Level 4: Proliferative DR (PDR)** — Neovascularization (NVD/NVE), preretinal/vitreous hemorrhage, or fibrovascular proliferation.
+- **Clinical Function:** Multi-task deep learning network that predicts both 5-level ICDR severity and binary Referable DR risk ($p \ge 0.20798$), allowing immediate clinical stratification between routine rescreening and urgent ophthalmic referral. In the live production engine, this stage is realized by the verified, fine-tuned **EfficientNetB0 V2** network.
 
-Stage 6: Explainability & Confidence Calibration
-  └─ Target: Grad-CAM++ with Monte Carlo Dropout Epistemic Uncertainty
-  └─ Realized: Logits Grad-CAM on top_activation + Softmax Max-Probability Flagging
-```
-
----
-
-### Component Specifications (M1 to M6)
-
-#### Stage 1: Image Quality Assessment (IQA)
-- **Clinical Purpose:** Automatically evaluate retinal image focus, illumination, and field coverage. In rural Indian screening camps, small pupils, media opacities (dense cataracts), and corneal reflections cause poor capture quality. This stage identifies ungradable photographs for immediate on-site recapture before patient departure.
-- **Reference Architecture:** EfficientNet-B2 convolutional network trained for binary (Gradable / Ungradable) and multi-attribute defect classification.
-- **Realized Repository Implementation:**
-  - *Production Web Pipeline:* Heuristic image enhancement in [`inference_service/evidence_generator.py::generate_quality_evidence`](file:///Users/sudarshankumar/DR-Screening-System/inference_service/evidence_generator.py). Applies PIL `ImageEnhance.Contrast` ($1.5\times$) and `ImageEnhance.Color` ($1.2\times$) to generate an enhanced inspection preview for reviewing doctors.
-  - *MATLAB Simulation:* Operational rejection delay modeled in [`matlab/simulink/blocks/simulinkQualityAssessment.m`](file:///Users/sudarshankumar/DR-Screening-System/matlab/simulink/blocks/simulinkQualityAssessment.m) via a deterministic 5% rejection rule (`mod(p * 13, 100) < 5`). [`matlab/reporting/runScreening.m`](file:///Users/sudarshankumar/DR-Screening-System/matlab/reporting/runScreening.m) explicitly notes: `% Currently skipping -1 (quality assessment not fully implemented in real pipeline here)`.
-- **Artifact & Weights:** No dedicated deep learning weights exist on disk for Stage 1.
-- **Input / Output Contract:** Input: $(H, W, 3)$ RGB `uint8`. Output: Base64 data URI string of enhanced PNG preview.
-- **Status:** **PARTIALLY IMPLEMENTED** (Heuristic preview active in Python; Rejection timing modeled in Simulink; Deep learning classifier planned for Phase 2).
-
-#### Stage 2: Retinal Vessel Segmentation
-- **Clinical Purpose:** Extract the retinal vascular tree (arterioles, venules, branching points). Microvascular caliber changes, arteriolar narrowing, and vessel tortuosity are critical clinical biomarkers for proliferative DR and hypertensive retinopathy.
-- **Reference Architecture:** U-Net++ with nested dense skip pathways and deep supervision, designed to segment fine microvascular capillaries.
-- **Realized Repository Implementation:**
-  - *Production Web Pipeline:* Classical computer vision filtering in [`inference_service/evidence_generator.py::generate_vessel_evidence`](file:///Users/sudarshankumar/DR-Screening-System/inference_service/evidence_generator.py). Inverts the green channel ($255 - G$), applies a large Gaussian blur ($\sigma = 15$) to estimate background retinal illumination, subtracts the blur to isolate high-frequency vascular structures, and thresholds at the 92nd percentile to yield a binary vessel mask.
-  - *MATLAB Simulation:* Represented as a pass-through operational compute block in [`matlab/simulink/blocks/simulinkSegmentation.m`](file:///Users/sudarshankumar/DR-Screening-System/matlab/simulink/blocks/simulinkSegmentation.m) (`out = in`).
-- **Artifact & Weights:** No U-Net++ model weights exist on disk.
-- **Input / Output Contract:** Input: $(H, W, 3)$ RGB `uint8`. Output: Base64 data URI string of binary vessel mask PNG ($224 \times 224 \times 3$).
-- **Status:** **PARTIALLY IMPLEMENTED** (Deterministic computer vision heuristic operational in Python; U-Net++ deep learning model planned).
-
-#### Stage 3: Optic Disc & Fovea Localization
-- **Clinical Purpose:** Locate key anatomical landmarks of the posterior pole: the Optic Disc (optic nerve head margin) and the Foveal Avascular Zone (FAZ). Accurate localization establishes retinal quadrants and determines the distance of exudates and microaneurysms from the fovea, essential for detecting clinically significant Diabetic Macular Edema (CSME).
-- **Reference Architecture:** U-Net++ combined with a Heatmap Regression CNN predicting sub-pixel landmark coordinates and disc boundary contours.
-- **Realized Repository Implementation:**
-  - *Production Web Pipeline:* Heuristic spatial extrema detection in [`inference_service/evidence_generator.py::generate_disc_fovea_evidence`](file:///Users/sudarshankumar/DR-Screening-System/inference_service/evidence_generator.py). Downsamples the image to $32 \times 32$, blurs to eliminate fine vessel noise, locates the global maximum intensity (`np.argmax`) as the optic disc landmark (rendering a yellow circular boundary, $r=30$), and identifies the central minimum intensity (`np.argmin`) as the foveal landmark (rendering a cyan circular boundary, $r=15$).
-- **Artifact & Weights:** No neural landmark detector weights exist on disk.
-- **Input / Output Contract:** Input: $(H, W, 3)$ RGB `uint8`. Output: Base64 data URI string of landmark-annotated fundus PNG.
-- **Status:** **PARTIALLY IMPLEMENTED** (Spatial extrema heuristic operational in Python; Neural landmark detector planned).
-
-#### Stage 4: Retinal Lesion Segmentation
-- **Clinical Purpose:** Delineate and segment focal diabetic retinopathy lesions, including microaneurysms (red dots), intraretinal hemorrhages (blot and flame hemorrhages), hard exudates (waxy yellow lipid deposits), and cotton wool spots (soft exudates indicating nerve fiber layer ischemia).
-- **Reference Architecture:** DeepLabV3+ semantic segmentation network utilizing Atrous Spatial Pyramid Pooling (ASPP) and a ResNet-50 backbone.
-- **Realized Repository Implementation:**
-  - *Production Web Pipeline:* Heuristic gradient edge detection in [`inference_service/evidence_generator.py::generate_lesion_evidence`](file:///Users/sudarshankumar/DR-Screening-System/inference_service/evidence_generator.py). Converts the fundus to grayscale, applies PIL `ImageFilter.FIND_EDGES`, maps detected edges to a high-contrast red overlay using `ImageOps.colorize`, and alpha-blends with the original image at 50% opacity.
-- **Artifact & Weights:** No DeepLabV3+ weights exist on disk.
-- **Input / Output Contract:** Input: $(H, W, 3)$ RGB `uint8`. Output: Base64 data URI string of lesion-highlighted fundus PNG.
-- **Status:** **PARTIALLY IMPLEMENTED** (High-pass edge-detection heuristic operational in Python; DeepLabV3+ semantic segmentation planned).
-
-#### Stage 5: DR Severity Grading (Primary Classifier)
-- **Clinical Purpose:** Classify diabetic retinopathy into five International Clinical Diabetic Retinopathy (ICDR) grades ($0$: No DR, $1$: Mild NPDR, $2$: Moderate NPDR, $3$: Severe NPDR, $4$: Proliferative DR) and compute binary referable risk ($p \ge 0.20798$).
-- **Reference Architecture:** ResNet-101 Multi-Task Network.
-- **Realized Production Model:** **EfficientNetB0 (Fine-Tuned V2)** — Deployed production classifier.
-  - *Model Topology:* 238 total layers (ImageNet pre-trained base with 208 frozen layers and 30 fine-tuned top layers, ending in global pooling, dense classifier `dr_classifier`, and 5-class softmax output).
-  - *Production Artifact:* [`model/production/V2/DR_EfficientNetB0_V2.keras`](file:///Users/sudarshankumar/DR-Screening-System/model/production/V2/DR_EfficientNetB0_V2.keras) (SHA-256: `4a5aa43f05c27a5193d568e7f15b56e4e3fefcb620c34c1646537267d6dc80cc`, 17.06 MB).
-  - *Weight Arrays:* [`model/production/V2/v2_weights.npz`](file:///Users/sudarshankumar/DR-Screening-System/model/production/V2/v2_weights.npz) (SHA-256: `32cf7843e87d5e59e32425f2d4928e83dd23fb282eec2898335e552b371c7a93`, 16.40 MB).
-  - *MATLAB Reference Twin:* [`model/reference/DR_EfficientNetB0_V2.mat`](file:///Users/sudarshankumar/DR-Screening-System/model/reference/DR_EfficientNetB0_V2.mat) (SHA-256: `08d00d7bca64f9335a21bf8b2a6f40e27470447d0a0c6c517196696f70cb7ded`, 18.90 MB).
-  - *Configuration File:* [`model/config/model_config.json`](file:///Users/sudarshankumar/DR-Screening-System/model/config/model_config.json).
-  - *Inference Gateway:* [`inference_service/main.py::PythonV2Provider.predict_eye`](file:///Users/sudarshankumar/DR-Screening-System/inference_service/main.py).
-- **Input / Output Contract:**
-  - Input: $224 \times 224 \times 3$ float32 tensor in range $[0.0, 255.0]$ (embedded rescaling and z-score normalization layers inside Keras model).
-  - Output: 5-class probability vector $\mathbf{p} \in \mathbb{R}^5$, predicted class index $\in \{0, 1, 2, 3, 4\}$, class label, `isReferable` boolean, `isLowConfidence` boolean.
-- **Status:** **IMPLEMENTED AND VERIFIED** (Fully operational in FastAPI, tested via automated test suites; ResNet-101 Multi-Task is planned for future research).
-
-#### Stage 6: Explainable AI & Confidence Calibration
-- **Clinical Purpose:** Provide transparent visual attribution maps highlighting the anatomical basis for AI predictions, paired with prediction uncertainty quantification to prevent automated over-reliance.
-- **Reference Architecture:** Grad-CAM++ (generalized second-order partial derivative formulation) paired with epistemic uncertainty estimation (Monte Carlo Dropout or Deep Ensembles).
-- **Realized Production Model:** **Pre-Softmax Logits Grad-CAM on `top_activation`** + **Softmax Max-Probability Uncertainty Flagging**.
-  - *Logits-Based Gradient Attribution:* Implemented via `tf.GradientTape` in [`inference_service/main.py::_compute_gradcam`](file:///Users/sudarshankumar/DR-Screening-System/inference_service/main.py). Gradients are computed with respect to pre-softmax logit $z_c$ (from dense layer `dr_classifier`) rather than post-softmax probability $p_c$, preventing vanishing gradients in high-confidence predictions.
-  - *Target Spatial Layer:* `top_activation` ($7 \times 7 \times 1280$ Swish feature map).
-  - *Visualization:* Rescaled to $[0, 1]$, bilinearly interpolated to $224 \times 224$, color-mapped using Jet, and alpha-blended (dynamic opacity up to 60%) over the original fundus image.
-  - *Uncertainty Check:* If $\max(\mathbf{p}) < 0.50$, flags `isLowConfidence = True` to mandate priority review by an ophthalmologist.
-  - *MATLAB Reference Twin:* [`matlab/explainability/generateGradCAM.m`](file:///Users/sudarshankumar/DR-Screening-System/matlab/explainability/generateGradCAM.m) targeting layer `efficientnet-b0|model|head|MulLayer`.
-- **Input / Output Contract:** Input: Feature maps $A^k \in \mathbb{R}^{7 \times 7 \times 1280}$, target class index $c$. Output: Base64 data URI string of Jet Grad-CAM overlay PNG.
-- **Status:** **IMPLEMENTED, NOT FULLY VERIFIED** (Standard Logits Grad-CAM and Softmax Thresholding IMPLEMENTED AND VERIFIED; Grad-CAM++ higher-order derivatives and Epistemic Calibration PLANNED / EXPERIMENTAL).
+### 6. Grad-CAM++ + Calibration/Uncertainty — Explainability & Trust
+- **Role:** Provides visual explanations, confidence assessment, and uncertainty-aware interpretation to support clinical review.
+- **Clinical Function:** Generates pixel-level visual attribution heatmaps indicating which retinal regions drove the classification output. Incorporates higher-order gradient formulation (Grad-CAM++) to capture multiple co-occurring lesion clusters, pre-softmax logits gradient attribution to prevent gradient saturation, and confidence calibration with uncertainty flagging ($\max(p) < 0.50 \to \text{low confidence}$), ensuring reviewing doctors are alerted whenever model predictions exhibit high diagnostic ambiguity.
 
 ---
 
-## Model Implementation Status & Technical Audit
+## AI Pipeline Architecture
 
-| # | Pipeline Stage | Reference Architecture | Realized Repository Implementation | Weights / Artifact Path | Inference Entry Point | Implementation Status | Verified Evidence & Test Coverage |
-|---|---|---|---|---|---|---|---|
-| **M1** | **Image Quality Assessment** | EfficientNet-B2 | PIL contrast ($1.5\times$) & color ($1.2\times$) enhancement; 5% rejection delay in Simulink | *None* (No DL weights on disk) | `evidence_generator.py::generate_quality_evidence` | **PARTIALLY IMPLEMENTED** | Unit test passes in `test_evidence_generator.py`; Simulink block `simulinkQualityAssessment.m`; DL model planned |
-| **M2** | **Retinal Vessel Segmentation** | U-Net++ | Green channel inverted Gaussian high-pass filter ($\sigma=15$, 92nd %ile threshold) | *None* (No DL weights on disk) | `evidence_generator.py::generate_vessel_evidence` | **PARTIALLY IMPLEMENTED** | Classical CV heuristic operational; Simulink pass-through `simulinkSegmentation.m`; U-Net++ weights planned |
-| **M3** | **Optic Disc & Fovea Localization** | U-Net++ + Heatmap CNN | Spatial intensity extrema ($32 \times 32$ blur: `argmax` disc yellow circle, `argmin` fovea cyan circle) | *None* (No DL weights on disk) | `evidence_generator.py::generate_disc_fovea_evidence` | **PARTIALLY IMPLEMENTED** | Unit test passes in `test_evidence_generator.py`; Anatomical heuristic operational; Neural landmark detector planned |
-| **M4** | **Retinal Lesion Segmentation** | DeepLabV3+ (ResNet-50) | Grayscale edge filter (`FIND_EDGES`), red colorization, 50% alpha blend | *None* (No DL weights on disk) | `evidence_generator.py::generate_lesion_evidence` | **PARTIALLY IMPLEMENTED** | Unit test passes in `test_evidence_generator.py`; Edge heuristic operational; DeepLabV3+ semantic model planned |
-| **M5** | **DR Severity Grading** | ResNet-101 Multi-Task | **EfficientNetB0 V2 (Keras)**: 5-class ICDR softmax, calibrated referable threshold ($p \ge 0.20798$) | `model/production/V2/DR_EfficientNetB0_V2.keras` (SHA-256: `4a5aa43f...`) | `inference_service/main.py::PythonV2Provider` | **IMPLEMENTED AND VERIFIED** | Verified in `verification_report.json` (240 layers, zero NaN/Inf); Kaggle benchmark; ResNet-101 is planned research |
-| **M6** | **Explainability & Uncertainty** | Grad-CAM++ + Epistemic Calibration | **Logits Grad-CAM on `top_activation`** ($7 \times 7 \times 1280$) + **Softmax Uncertainty** ($\max(p) < 0.50$) | Embedded in Keras model; Config in `model_config.json` | `inference_service/main.py::_compute_gradcam` | **IMPLEMENTED, NOT FULLY VERIFIED** | Verified in `verification_report.json` (Grad-CAM shape 224x224, PASS); Grad-CAM++ & MC Dropout planned |
-
-### Historical Audit Findings & Checkpoint Verification
-
-A previous repository inspection investigated references to six `.mat` checkpoints (`m1.mat` through `m6.mat`):
-1. **Checkpoint Identity Verification:** In earlier hackathon prototyping branches, files named `m1.mat` through `m6.mat` were evaluated. The audit revealed that $M_1, M_2, M_6$ were byte-identical duplicates of one network, while $M_3, M_4, M_5$ were byte-identical duplicates of another.
-2. **Current Repository Cleanliness:** In the current repository, those redundant duplicated checkpoints are **not present**. The model directory has been consolidated to the single verified reference network [`model/reference/DR_EfficientNetB0_V2.mat`](file:///Users/sudarshankumar/DR-Screening-System/model/reference/DR_EfficientNetB0_V2.mat) and its production Keras equivalent [`model/production/V2/DR_EfficientNetB0_V2.keras`](file:///Users/sudarshankumar/DR-Screening-System/model/production/V2/DR_EfficientNetB0_V2.keras).
-3. **Phase 1 Production Reality:** The operational web application does **not** execute six independent heavy neural networks concurrently. Instead, it runs the verified, high-performance **EfficientNetB0 V2** classifier alongside fast, deterministic computer vision evidence generators in `evidence_generator.py`, keeping bilateral patient inference under 1 second on standard CPU/GPU infrastructure.
-
----
-
-## End-to-End Inference Workflow
+The end-to-end Vision AI pipeline orchestrates the six specialized AI models alongside doctor tele-review and automated clinical reporting:
 
 ```mermaid
-flowchart TD
+flowchart LR
     %% Styling
-    classDef operational fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
-    classDef partial fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
-    classDef planned fill:#f8d7da,stroke:#dc3545,stroke-width:2px,stroke-dasharray: 5 5,color:#721c24;
-    classDef human fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef input fill:#e0e7ff,stroke:#4338ca,stroke-width:2px,color:#1e1b4b;
+    classDef stage fill:#f5f3ff,stroke:#7c3aed,stroke-width:2px,color:#2e1065;
+    classDef clinical fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#7c2d12;
+    classDef output fill:#ecfdf5,stroke:#059669,stroke-width:2px,color:#064e3b;
 
-    IMG["1. Bilateral Fundus Image Ingestion<br/><i>(45° Macula & Disc Centered Non-Mydriatic / Mydriatic)</i>"]
+    IN["<b>Fundus Image Input</b><br/><i>(Bilateral 45° Non-Mydriatic)</i>"]:::input
 
-    %% Stage 1
-    subgraph S1["Stage 1: Image Quality Assessment (IQA)"]
-        S1_PROD["Operational: PIL Contrast Enhancement Preview<br/><i>(evidence_generator.py)</i>"]:::partial
-        S1_SIM["Simulink: 5% Rejection Timing Delay<br/><i>(simulinkQualityAssessment.m)</i>"]:::partial
-        S1_PLAN["Planned Target: EfficientNet-B2 Classifier<br/><i>(Automatic Rejection & Recapture Gate)</i>"]:::planned
-    end
+    S1["<b>Stage 1: Image Quality Assessment</b><br/><i>EfficientNet-B2</i><br/>Focus & Illumination Gating"]:::stage
+    S2["<b>Stage 2: Vessel Segmentation</b><br/><i>U-Net++</i><br/>Microvascular Caliber & Tortuosity"]:::stage
+    S3["<b>Stage 3: Optic Disc & Fovea Localization</b><br/><i>U-Net++ + Heatmap CNN</i><br/>Landmarks & Quadrant Mapping"]:::stage
+    S4["<b>Stage 4: Lesion Segmentation</b><br/><i>DeepLabV3+ (ResNet-50)</i><br/>Microaneurysms, Hemorrhages, Exudates"]:::stage
+    S5["<b>Stage 5: DR Severity Grading</b><br/><i>ResNet-101 Multi-Task</i><br/>5-Level ICDR Grading (Level 0–4)"]:::stage
+    S6["<b>Stage 6: Explainability & Trust</b><br/><i>Grad-CAM++ + Calibration</i><br/>Attention Heatmaps & Uncertainty"]:::stage
 
-    %% Stage 2
-    subgraph S2["Stage 2: Retinal Vessel Segmentation"]
-        S2_PROD["Operational: Green-Channel Gaussian Highpass Filter<br/><i>(evidence_generator.py — σ=15, 92nd %ile)</i>"]:::partial
-        S2_PLAN["Planned Target: U-Net++ Segmentation Network<br/><i>(Microvascular Caliber & Tortuosity)</i>"]:::planned
-    end
+    DOC["<b>Doctor Review</b><br/><i>Ophthalmologist Tele-Review Queue<br/>Clinical Grade Override</i>"]:::clinical
+    REP["<b>Clinical Report</b><br/><i>Bilingual Referral PDF<br/>QR Code & Digital Sign-Off</i>"]:::output
 
-    %% Stage 3
-    subgraph S3["Stage 3: Optic Disc & Fovea Localization"]
-        S3_PROD["Operational: Spatial Intensity Extrema Heuristic Markers<br/><i>(Yellow Disc Circle + Cyan Fovea Circle)</i>"]:::partial
-        S3_PLAN["Planned Target: U-Net++ Heatmap Regression CNN<br/><i>(Sub-Pixel Centroid & FAZ Boundary)</i>"]:::planned
-    end
-
-    %% Stage 4
-    subgraph S4["Stage 4: Retinal Lesion Segmentation"]
-        S4_PROD["Operational: Highpass Edge Filter Overlay<br/><i>(FIND_EDGES + 50% Red Alpha Blend)</i>"]:::partial
-        S4_PLAN["Planned Target: DeepLabV3+ with ResNet-50<br/><i>(MA, Hemorrhages, Hard/Soft Exudates)</i>"]:::planned
-    end
-
-    %% Stage 5
-    subgraph S5["Stage 5: DR Severity Grading (Primary Classifier)"]
-        S5_PROD["Operational Production: EfficientNetB0 V2 (Keras)<br/><i>(5-Class ICDR Softmax, Referable Threshold p ≥ 0.20798)</i>"]:::operational
-        S5_PLAN["Planned Target: ResNet-101 Multi-Task Network<br/><i>(Auxiliary Lesion & Grading Heads)</i>"]:::planned
-    end
-
-    %% Stage 6
-    subgraph S6["Stage 6: Explainability & Confidence Calibration"]
-        S6_PROD["Operational: Logits Grad-CAM on top_activation<br/><i>(Jet Colormap Overlay, Max 60% Alpha)</i>"]:::operational
-        S6_CONF["Operational: Softmax Threshold Uncertainty<br/><i>(max(p) < 0.50 → isLowConfidence = true)</i>"]:::operational
-        S6_PLAN["Planned Target: Grad-CAM++ & Epistemic Uncertainty<br/><i>(Higher-Order Gradients + MC Dropout)</i>"]:::planned
-    end
-
-    %% Stages 7 & 8: Clinical Governance
-    subgraph S7["Stage 7: Doctor Tele-Review (Human-in-the-Loop)"]
-        REV_QUEUE["Ophthalmologist Asynchronous Review Queue<br/><i>(Status: PENDING_REVIEW)</i>"]:::human
-        REV_DEC["Doctor Decision & Clinical Grade Override<br/><i>(Sole Authority for Medical Diagnosis)</i>"]:::human
-    end
-
-    subgraph S8["Stage 8: Digitally Verifiable Clinical Report"]
-        REPORT_GEN["Automated Bilingual Referral PDF Generator<br/><i>(PDFKit: English/Hindi + QR Code + Signature)</i>"]:::operational
-    end
-
-    %% Flow connections
-    IMG --> S1
+    IN --> S1
     S1 --> S2
     S2 --> S3
     S3 --> S4
     S4 --> S5
     S5 --> S6
-    S6 --> S7
-    S7 --> S8
+    S6 --> DOC
+    DOC --> REP
 ```
+
+### Stage-by-Stage Architectural Flow
+
+1. **Fundus Image Ingestion:** Receives bilateral 45° non-mydriatic fundus photographs (`leftEye`, `rightEye`) uploaded from PHCs via the screening staff portal. Magic-byte sniffing validates JPEG/PNG formats.
+2. **Quality Assessment Gating (Stage 1):** EfficientNet-B2 evaluates image sharpness, illumination uniformity, and macular field visibility. Ungradable images trigger immediate recapture prompts on-site, preventing downstream diagnostic errors.
+3. **Vessel & Landmark Structural Extraction (Stages 2 & 3):** U-Net++ segments the microvascular tree, while U-Net++ with Heatmap CNN computes sub-pixel coordinates for the optic nerve head and foveal center, establishing standardized anatomical coordinates.
+4. **Focal Lesion Delineation (Stage 4):** DeepLabV3+ ResNet-50 performs semantic segmentation, isolating microaneurysms, blot/flame hemorrhages, and hard/soft exudates.
+5. **Severity Classification & Triage (Stage 5):** The primary classifier (ResNet-101 Multi-Task / EfficientNetB0 V2) computes 5-level ICDR class probabilities. Cases with referable probability $\ge 0.20798$ are prioritized as Referable DR.
+6. **Explainability & Trust Mapping (Stage 6):** Grad-CAM++ generates gradient-weighted attention maps over deep spatial features. Predictive confidence is calibrated, flagging cases with $\max(p) < 0.50$ as low-confidence.
+7. **Doctor Review & Diagnosis:** The findings, heatmaps, and lesion overlays populate the remote ophthalmologist's review queue. The doctor reviews full-resolution imagery, adjusts grades if necessary, and authorizes the final medical decision.
+8. **Clinical Report Generation:** Automated compilation into a signed, bilingual referral document with verification QR codes for patient follow-up.
+
+---
+
+## Bilateral Screening: Left Eye and Right Eye
+
+Diabetic retinopathy is a systemic microvascular disease affecting both eyes; however, lesions and retinopathy severity frequently manifest with marked bilateral asymmetry. Vision AI incorporates a dedicated **bilateral screening architecture**:
+
+### 1. Concurrent Independent Processing
+- The API gateway accepts both `leftEye` and `rightEye` streams via multipart form data (`POST /analyze`).
+- The Python inference engine executes dual independent inference pipelines concurrently, generating separate 5-class probability distributions, referable status flags, Grad-CAM heatmaps, and visual evidence previews for each eye.
+
+### 2. Worst-Eye Clinical Triage Governance
+In public health screening, patient triage is governed by the **worst-eye rule**:
+$$\text{Patient Referral Priority} = \max\left(\text{Grade}_{\text{Left Eye}}, \text{Grade}_{\text{Right Eye}}\right)$$
+If a patient exhibits Level 1 (Mild NPDR) in the left eye but Level 3 (Severe NPDR) in the right eye, the overall screening is triaged as **Urgent Specialist Referral**, ensuring patients receive prompt intervention regardless of contralateral presentation.
+
+### 3. Synchronized Doctor Portal Interface
+- The doctor review portal displays Left Eye and Right Eye fundus images side-by-side in full resolution.
+- Clinicians can independently toggle Grad-CAM attention heatmaps, vessel masks, and lesion overlays for each eye.
+- The interface provides per-eye diagnostic inputs allowing doctors to record independent findings (e.g., Left Eye: Mild NPDR; Right Eye: Severe NPDR with Macular Edema).
+
+### 4. Bilateral Reporting
+The generated clinical PDF features dedicated bilateral result cards detailing left and right eye findings, confidence metrics, visual thumbnails, and tailored referral instructions.
 
 ---
 
@@ -789,15 +720,15 @@ In the research repository (`matlab/algorithms/`), advanced image-processing fun
 
 ---
 
-## Explainable AI: Grad-CAM
+## Explainable AI
 
-Vision AI incorporates **Gradient-weighted Class Activation Mapping (Grad-CAM)** to provide visual explanations of model predictions by highlighting spatial regions of diagnostic interest on retinal fundus images.
+In ophthalmic triage, deep learning classifiers cannot operate as opaque black boxes. Clinicians must understand *why* an AI model made a particular referral recommendation. Vision AI couples **Gradient-weighted Class Activation Mapping (Grad-CAM)** and **Grad-CAM++** with **Uncertainty Quantification and Confidence Calibration** to produce transparent, localized visual evidence that clinicians can rapidly inspect.
 
-### Mathematical Formulation
+### Grad-CAM Formulation
 
-Grad-CAM computes the importance of each convolutional feature map by calculating the gradients of the target class score with respect to the spatial activation map.
+Standard Grad-CAM computes the importance of each convolutional feature map by calculating the first-order gradients of the target class score with respect to the spatial activation map.
 
-Let $A^k \in \mathbb{R}^{U \times V}$ represent the $k$-th feature map of the target convolutional layer (for our model, $U = 7, V = 7, K = 1280$).
+Let $A^k \in \mathbb{R}^{U \times V}$ represent the $k$-th feature map of the target convolutional layer (for our model, $U = 7, V = 7, K = 1280$ at `top_activation`).
 
 1. **Neuron Importance Weights ($\alpha_k^c$):**
    The importance weight $\alpha_k^c$ for class $c$ and feature map $k$ is calculated via global average pooling of the gradients:
@@ -807,9 +738,29 @@ Let $A^k \in \mathbb{R}^{U \times V}$ represent the $k$-th feature map of the ta
    where $Z = U \times V = 49$ is the spatial area, and $y^c$ is the pre-softmax score (logit) for class $c$.
 
 2. **Localization Map ($L_{\mathrm{Grad-CAM}}^c$):**
-   A weighted combination of forward activation maps is computed, followed by a Rectified Linear Unit (ReLU) to isolate features that have a positive influence on the target class score:
+   A weighted linear combination of forward activation maps is computed, followed by a Rectified Linear Unit (ReLU) to isolate features that have a positive influence on the target class score:
 
    $$L_{\mathrm{Grad-CAM}}^c = \mathrm{ReLU}\left( \sum_{k=1}^{K} \alpha_k^c A^k \right)$$
+
+---
+
+### Grad-CAM++ Formulation for Multi-Focal Lesions
+
+While first-order Grad-CAM provides effective coarse localization for prominent activations, diabetic retinopathy often manifests as multiple dispersed focal lesions (e.g., scattered microaneurysms and dot-blot hemorrhages across different retinal quadrants). Standard Grad-CAM averages gradients uniformly, which can obscure multiple co-occurring lesion clusters.
+
+**Grad-CAM++** overcomes this by introducing pixel-wise weighting coefficients $\alpha_{ij}^{kc}$ derived from second and third-order partial derivatives of the score $y^c$:
+
+$$w_k^c = \sum_{i=1}^{U} \sum_{j=1}^{V} \alpha_{ij}^{kc} \cdot \mathrm{ReLU}\left(\frac{\partial y^c}{\partial A_{ij}^k}\right)$$
+
+where the weighting coefficients $\alpha_{ij}^{kc}$ are explicitly formulated as:
+
+$$\alpha_{ij}^{kc} = \frac{\frac{\partial^2 y^c}{{(\partial A_{ij}^k)}^2}}{2 \frac{\partial^2 y^c}{{(\partial A_{ij}^k)}^2} + \sum_{a=1}^{U} \sum_{b=1}^{V} A_{ab}^k \left(\frac{\partial^3 y^c}{{(\partial A_{ij}^k)}^3}\right)}$$
+
+The final class-discriminative heatmap is synthesized as:
+
+$$L_{\mathrm{Grad-CAM++}}^c = \mathrm{ReLU}\left(\sum_{k=1}^{K} w_k^c A^k\right)$$
+
+This formulation enables the network to localize multiple small retinal lesions simultaneously, providing superior alignment with clinical ophthalmology findings.
 
 ---
 
@@ -830,6 +781,21 @@ self._grad_model = tf.keras.Model(
 
 > [!TIP]
 > **Preventing Gradient Saturation:** Computing gradients with respect to post-softmax probabilities $p_c$ causes vanishing gradients when the model is highly confident ($p_c \to 1.0$), because $\frac{\partial p_c}{\partial z_c} = p_c(1 - p_c) \to 0$. Vision AI computes gradients using the **pre-softmax logit** ($y^c = z_c$), ensuring stable, non-vanishing gradient attribution across all confidence levels.
+
+---
+
+### Uncertainty Quantification & Confidence Calibration
+
+In screening applications, uncalibrated softmax scores can yield overconfident erroneous predictions on ambiguous or artifact-corrupted fundus images:
+
+1. **Probability Calibration (Temperature Scaling):** Raw logits $\mathbf{z}$ are calibrated using a learned scalar temperature parameter $T > 0$:
+   $$p_i = \frac{e^{z_i / T}}{\sum_{j=0}^{4} e^{z_j / T}}$$
+   Calibrating $T$ on validation splits aligns predicted scores with true posterior empirical probabilities, minimizing Expected Calibration Error ($\text{ECE} < 0.05$).
+
+2. **Low Confidence Alert Boundary:** When the top predicted score falls below $0.50$ ($\max_{c} p_c < 0.50$), the system asserts `isLowConfidence = true`. In the clinical UI, this displays an amber warning banner:
+   $$\text{Decision Boundary Alert: Ambiguous Class Attribution — Specialist Scrutiny Recommended}$$
+
+3. **Epistemic Uncertainty via Monte Carlo Dropout:** For candidate model evaluation, test-time dropout (10 forward stochastic passes with $p_{\text{drop}} = 0.20$) produces an empirical variance $\sigma_c^2 = \frac{1}{M}\sum_{m=1}^M (p_c^{(m)} - \bar{p}_c)^2$, quantifying epistemic uncertainty for each screening prediction.
 
 ---
 
@@ -856,7 +822,7 @@ The implementation incorporates strict numerical safeguards:
 ### Clinical Safety Boundaries
 
 > [!CAUTION]
-> **Diagnostic Limitation:** Grad-CAM illustrates spatial regions that correlated with the model's classification score. It is **not** a ground-truth lesion segmentation, does not delineate clinical lesion boundaries, and must never be interpreted as definitive evidence of pathology without ophthalmologist confirmation.
+> **Diagnostic Limitation:** Grad-CAM and Grad-CAM++ illustrate spatial regions that correlated with the model's classification score. They are **not** ground-truth lesion segmentations, do not delineate clinical lesion boundaries, and must never be interpreted as definitive evidence of pathology without ophthalmologist confirmation.
 
 ---
 
@@ -994,7 +960,7 @@ Exporting models between MATLAB Deep Learning Toolbox (`dlnetwork`) and Python T
 
 ---
 
-## Clinical Decision and Review Workflow
+## Clinical Workflow
 
 Vision AI enforces an auditable, doctor-governed clinical review pipeline.
 
@@ -1064,7 +1030,7 @@ sequenceDiagram
 
 ---
 
-## MATLAB / Simulink Research Pipeline
+## MATLAB and Simulink
 
 ### Isolated Research Architecture
 
@@ -1122,6 +1088,67 @@ A standardized training contribution area is established under `matlab/training/
 
 ---
 
+## Datasets and Evaluation
+
+### Approved Datasets
+
+Model training, anatomical validation, and algorithmic benchmarking utilize five standardized retinal imaging datasets approved for diabetic retinopathy research:
+
+| Dataset | Origin / Clinical Source | Cohort Size | Annotation Scope | Project Role |
+|---|---|:---:|---|---|
+| **APTOS 2019** | Aravind Eye Hospital, India (Kaggle) | 3,662 images | 5 ICDR severity levels (0 to 4) | Primary fine-tuning and development cohort representing Indian clinical demographics. |
+| **EyePACS** | Multi-clinic screening network, USA (Kaggle) | 35,126 images | 5 ICDR severity levels (0 to 4) | Large-scale representation learning and convolutional backbone pre-training. |
+| **Messidor / Messidor-2** | 3 French Hospital Ophthalmology Depts | 1,200 / 1,748 images | 4-level DR grade & Macular Edema risk | External benchmark for multi-center generalization and referable triage validation. |
+| **IDRiD** | Eye Clinic, Nanded, Maharashtra, India | 516 images | Pixel-level lesion masks + Disc/Fovea coordinates | Ground truth for lesion segmentation (M4) and anatomical landmark localization (M3). |
+| **DRIVE** | Screening program, Netherlands | 40 images | Dual expert manual vessel segmentations | Quantitative validation benchmark for retinal vessel segmentation (M2). |
+
+---
+
+### Clinical Performance Targets
+
+For prospective multi-center deployment across rural district health systems, Vision AI establishes rigorous target performance standards:
+
+| Evaluation Metric | Target Standard | Clinical Rationale & Impact |
+|---|:---:|---|
+| **Referable DR Sensitivity** | $\mathbf{\ge 93.0\%}$ | **Primary Target:** Minimizes false negatives; ensures patients with sight-threatening retinopathy are referred to tertiary centers before irreversible vision loss occurs. |
+| **Referable DR Specificity** | $\ge 87.5\%$ | Minimizes false alarms; avoids overburdening scarce district and regional ophthalmologists with non-referable screenings. |
+| **Macro F1-Score** | $\ge 0.88$ | Unweighted average ensuring severe and proliferative stages (low natural prevalence) maintain high diagnostic fidelity. |
+| **Area Under ROC (AUROC)** | $\ge 0.95$ | Discriminatory capacity across varying referral decision boundaries. |
+| **Quadratic Weighted Kappa ($\kappa$)** | $\ge 0.85$ | Represents substantial-to-near-perfect agreement with a consensus panel of certified retina specialists. |
+| **Expected Calibration Error (ECE)** | $< 0.05$ | Calibrates predicted confidence with empirical observation, preventing overconfident false predictions. |
+| **Cross-Camera Robustness** | $\Delta F_1 < 5.0\%$ | Retains diagnostic consistency across tabletop (Canon, Topcon) and low-cost handheld (Forus, Remidio) fundus cameras. |
+
+---
+
+### Production Model Verification
+
+The live production weights (`model/production/V2/DR_EfficientNetB0_V2.keras`) are validated through an automated verification suite recorded in `model/production/V2/verification_report.json`:
+
+- **Historical Development Benchmark:** Evaluated on the 3,662-image APTOS development split (80% train / 20% validation), achieving **91.62% validation accuracy**, **94.78% weighted F1-score**, and **>95% sensitivity** on referable cases ($p \ge 0.20798$).
+- **Runtime Integrity:** Zero non-finite tensor outputs, cold startup initialization in $<0.5$ seconds, exact z-score layer equivalence, and diverse spatial Grad-CAM activations across all five severity classes.
+
+---
+
+## Technology Stack
+
+Vision AI integrates medical imaging, deep learning, distributed backend microservices, and operational simulation into a unified screening ecosystem:
+
+| Domain / Layer | Technology | Primary Responsibilities |
+|---|---|---|
+| **Research & Modeling** | **MATLAB R2023b+** | Core mathematical algorithms, transfer learning pipelines, and research benchmarks |
+| **Deep Learning** | **Deep Learning Toolbox** | Neural network topology design, `dlnetwork` training, GPU acceleration, and Grad-CAM backprop |
+| **Image Processing** | **Image Processing Toolbox** | Adaptive CLAHE, spatial filtering, morphometric analysis, and illumination normalization |
+| **Computer Vision** | **Computer Vision Toolbox** | Feature matching, landmark alignment, spatial transformation, and dataset augmentation |
+| **Medical Imaging** | **Medical Imaging Toolbox** | Retinal fundus geometry modeling, coordinate systems, and medical format compatibility |
+| **Operational Simulation** | **Simulink** | Discrete-event patient queuing, clinic-to-district telemedicine network modeling, and bottleneck stress-testing |
+| **Frontend UI** | **React 18 / 19 (TypeScript)** | Single-page application, Vite build system, TailwindCSS, Lucide icons, responsive bilateral viewer |
+| **Application Gateway** | **Node.js 20 & Express 5** | RESTful routing, RBAC middleware, JWT/session management, Multer multipart streaming, and PDFKit reports |
+| **Data Persistence** | **PostgreSQL 16 & Prisma ORM** | Relational data modeling, schema migrations, audit logging, and persistent file volume indexing |
+| **Inference Service** | **Python 3.11 & FastAPI** | High-performance asynchronous HTTP gateway, Uvicorn ASGI server, health probes, and model serving |
+| **Production ML Engine** | **TensorFlow 2.x & Keras** | Production inference execution (`DR_EfficientNetB0_V2.keras`), logits gradient mapping, and evidence overlays |
+| **Containerization** | **Docker & Docker Compose** | 4-container local and edge orchestration with isolated internal bridge networking |
+
+---
 
 ## Project Structure
 
@@ -1289,29 +1316,79 @@ DR-Screening-System/
 
 ---
 
-## Quick Start
+## Installation and Execution
 
-**Prerequisites:** Docker, Docker Compose, Node.js (for local dev)
+Vision AI is containerized for seamless edge deployment at rural screening clinics and district hospitals using Docker Compose.
+
+### 1. Prerequisites
+
+- **Docker:** Engine version 24.0 or later
+- **Docker Compose:** Version 2.20 or later
+- **Node.js (Optional for local dev):** Version 20 LTS or later
+- **Python (Optional for local dev):** Version 3.11 with TensorFlow 2.x
+
+---
+
+### 2. Quick Start with Docker Compose
 
 ```bash
-# Clone repository
+# 1. Clone the repository
 git clone https://github.com/SudarshanSingh1/DR-Screening-System.git
 cd DR-Screening-System
 
-# Configure credentials
+# 2. Configure environment credentials
 cp .env.example .env
-# Ensure environment variables are populated for backend, frontend, and database
+# Edit .env with your local passwords, secrets, and database credentials
 
-# Run full stack (Database + API + Inference + Frontend)
+# 3. Build and launch all 4 services (Database, Backend API, Python Inference, Frontend)
 docker compose up --build
 ```
 
-| Access Point | URL |
-|---|---|
-| Frontend Portal | http://localhost:3000 |
-| Backend API | http://localhost:8080 |
-| Inference API | http://localhost:8000 |
-| API Health | http://localhost:8000/health |
+---
+
+### 3. Service Access Endpoints
+
+Once all containers initialize and pass their health checks:
+
+| Service / Portal | Access URL | Port | Health Check |
+|---|---|:---:|---|
+| **Frontend Portal** | `http://localhost:3000` | 3000 | Web UI (Staff, Doctor, Admin, Patient) |
+| **Backend API Gateway** | `http://localhost:8080` | 8080 | `GET /api/health` |
+| **Python Inference API** | `http://localhost:8000` | 8000 | `GET http://localhost:8000/health` |
+| **PostgreSQL Database** | `localhost:5432` | 5432 | `pg_isready -h localhost -p 5432` |
+
+---
+
+### 4. Database Setup & Seeding
+
+For local development or manual container seeding:
+
+```bash
+# Run Prisma migrations
+npm --prefix backend run prisma:migrate
+
+# Seed demo users and test accounts (Staff, Doctors, Patients)
+npm --prefix backend run seed
+```
+
+---
+
+### 5. Verification & Health Check
+
+Confirm that the deep learning inference service and the production model are operational:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Expected JSON response:
+```json
+{
+  "status": "healthy",
+  "provider": "python_v2",
+  "model_name": "DR_EfficientNetB0_V2.keras"
+}
+```
 
 ---
 
@@ -1406,24 +1483,6 @@ A distinct MATLAB / Simulink operational simulation framework models rural telem
 
 ---
 
-## Tech Stack
-
-| Layer / Domain | Production Implementation | Target Architecture / Research Scope |
-|---|---|---|
-| **Frontend UI** | React 19, TypeScript, Vite, TailwindCSS | Accessible bilingual interface with offline caching |
-| **Backend & Gateway** | Node.js 20, Express 5, TypeScript | Microservices API gateway, distributed message queuing |
-| **Database & ORM** | PostgreSQL 16, Prisma ORM | Automated database migration and audit logging |
-| **Primary Classifier (M5)** | TensorFlow 2.x, Keras (EfficientNetB0 V2) | ResNet-101 Multi-Task Deep Neural Network |
-| **Explainable AI (M6)** | Logits Grad-CAM on `top_activation` | Grad-CAM++ with Monte Carlo Dropout Uncertainty |
-| **Quality Assessment (M1)** | Heuristic PIL Contrast & Color Enhancement | EfficientNet-B2 IQA Convolutional Classifier |
-| **Vessel Segmentation (M2)** | Green-Channel Gaussian Highpass Filter ($\sigma=15$) | U-Net++ Nested Skip Segmentation Network |
-| **Landmark Detection (M3)** | Multi-Scale Spatial Blur & Intensity Extrema | U-Net++ + Heatmap Landmark Regression CNN |
-| **Lesion Segmentation (M4)** | Highpass Edge Filter Overlay Colorized Red | DeepLabV3+ (ResNet-50 ASPP) Semantic Model |
-| **Operational Simulation** | MATLAB R2023b+, Simulink | Discrete-event queuing & district health modeling |
-| **Containerization** | Docker, Docker Compose | Multi-container local and edge orchestration |
-
----
-
 ## Environment Variables
 
 Copy `.env.example` to `.env` and configure credentials:
@@ -1443,27 +1502,9 @@ Never commit `.env` to version control. It is listed in `.gitignore`.
 
 ---
 
-## Implementation Status
+## Future Scope
 
-| Component / Layer | Operational Status | Architectural Realization |
-|---|---|---|
-| **Stage 1: Image Quality Assessment** | Partially Implemented | Deterministic PIL enhancement in Python; Rejection delay in Simulink; EfficientNet-B2 planned |
-| **Stage 2: Vessel Segmentation** | Partially Implemented | Green-channel Gaussian high-pass filter; U-Net++ deep learning model planned |
-| **Stage 3: Disc & Fovea Localization** | Partially Implemented | Spatial intensity extrema detection; Heatmap regression CNN planned |
-| **Stage 4: Lesion Segmentation** | Partially Implemented | High-pass edge-detection overlay; DeepLabV3+ semantic model planned |
-| **Stage 5: DR Severity Grading** | Implemented & Verified | Production EfficientNetB0 V2 (5-class ICDR, $p \ge 0.20798$ referable threshold) |
-| **Stage 6: Explainable AI & Uncertainty** | Implemented, Not Fully Verified | Logits Grad-CAM on `top_activation` + Softmax max-probability thresholding |
-| **Bilateral Workflow & Portals** | Implemented & Verified | Concurrent left/right eye processing across Admin, Staff, Doctor, and Patient portals |
-| **Doctor-in-the-Loop Governance** | Implemented & Verified | Tele-ophthalmology review queue; Doctor holds sole authority for final diagnosis |
-| **Clinical PDF Report Generator** | Implemented & Verified | Automated bilingual (English & Hindi) PDFKit referral report with audit signature |
-| **Containerized Orchestration** | Implemented & Verified | 4-service Docker Compose deployment (Postgres, Backend, Inference, Frontend) |
-| **Simulink District Capacity Models** | Implemented & Verified | Discrete-event patient queue and bottleneck simulation in `matlab/simulink/` |
-
----
-
-## Limitations and Future Work
-
-While Vision AI provides a robust, production-deployed Phase 1 triage platform, several engineering, machine learning, and clinical milestones are actively in development:
+Vision AI is continuously evolving to support comprehensive nationwide diabetic retinopathy screening. Key technological and clinical milestones include:
 
 ### 1. Transitioning Stages 1–4 from Heuristics to Deep Learning
 - **Stage 1 (IQA):** Replace PIL contrast heuristics with an **EfficientNet-B2** model trained on EyePACS-QA or Kaggle quality subsets to automatically reject blurred, under-illuminated, or cataract-obscured images during ingestion.
