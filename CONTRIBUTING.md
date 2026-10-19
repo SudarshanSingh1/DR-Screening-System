@@ -123,14 +123,33 @@ Follow Conventional Commits:
 ## Model Contribution Guidelines
 
 1. **New Models:** Train and evaluate new architectures in `matlab/training/` or an external training notebook. Follow the contributor guide in [`matlab/training/README.md`](matlab/training/README.md).
+
 2. **Export to Production:** Export validated weights to `.keras` format matching the input contract:
    - Input shape: `(None, 224, 224, 3)`
    - Pixel range: `[0.0, 255.0]` float32 (RGB)
    - Grad-CAM layer: `top_activation`
    - Output: 5-class softmax probabilities (ICDR 0–4)
+
 3. **Versioning:** Never overwrite existing models. Save new candidates in `model/production/V3/` and document evaluation metrics (Quadratic Weighted Kappa, Accuracy, Referable Sensitivity/Specificity) in `model/config/model_config.json`.
 
----
+4. **Dataset Quality and Preprocessing:** Ensure training, validation, and test datasets are properly separated to prevent data leakage. Document image preprocessing steps, class distributions, image quality checks, and any augmentation techniques used during training.
+
+5. **Explainability and Visualization:** Generate Grad-CAM heatmaps to highlight image regions influencing model predictions. Verify that heatmaps are generated successfully and correspond to the correct input image and predicted class. Treat heatmaps as explanatory aids, not proof of clinical correctness.
+
+6. **Reproducibility:** Record random seeds, dataset versions, training configurations, hyperparameters, and dependency versions for every new model candidate. Where possible, ensure that training and evaluation results can be reproduced.
+
+7. **Model Evaluation and Validation:** Evaluate each candidate on a held-out test dataset and report per-class precision, recall, F1-score, confusion matrix, Quadratic Weighted Kappa, and referable diabetic retinopathy sensitivity and specificity. Compare results against the currently deployed model before promoting a candidate.
+
+8. **Input Validation and Error Handling:** Reject unsupported image formats, corrupted files, invalid image dimensions, and empty inputs. Verify RGB channel ordering, pixel range, and tensor shape before inference. Handle low-quality or ungradable fundus images explicitly rather than forcing a severity prediction.
+
+9. **Model Configuration and Metadata:** Update `model/config/model_config.json` with the model version, architecture, input specifications, class mapping, evaluation metrics, training dataset reference, and creation date. Keep configuration metadata consistent with the exported model.
+
+10. **Production Readiness and Safety:** Validate inference compatibility, prediction output shape, probability normalization, and Grad-CAM generation before deployment. Model predictions must support clinical review and must not be presented as a definitive diagnosis without qualified medical assessment.
+
+11. **Documentation and Change Tracking:** Include a short report for each candidate describing architectural changes, training methodology, evaluation results, known limitations, and comparison with previous versions. Document any breaking changes to the model input or output contract.
+
+12. **Promotion and Rollback:** Promote a model to production only after all evaluation and compatibility checks pass. Retain previous validated versions and document the deployment decision so the system can be rolled back if a newly deployed model performs unexpectedly.
+
 
 ## Pull Request Process
 
