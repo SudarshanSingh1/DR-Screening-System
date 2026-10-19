@@ -371,58 +371,6 @@ DR-Screening-System/
 └── README.md                             # This file
 ```
 
-> **Note:** Directories under `matlab/training/`, `matlab/preprocessing/`, `matlab/datasets/`, `matlab/evaluation/`, `matlab/models/`, `matlab/conversion/`, and `matlab/results/` are prepared for contributions. See [`matlab/training/README.md`](matlab/training/README.md) for the full contributor guide.
-
-### Model Lifecycle
-
-Research artifacts and production artifacts follow a structured lifecycle. This is an architectural overview — not every stage is currently automated.
-
-```text
-Dataset documentation (matlab/datasets/)
-        │
-        ▼
-MATLAB preprocessing and experiments (matlab/preprocessing/, matlab/algorithms/)
-        │
-        ▼
-Training and validation (matlab/training/)
-        │
-        ▼
-Evaluation and model selection (matlab/evaluation/)
-        │
-        ▼
-Export / conversion if required (matlab/conversion/)
-        │
-        ▼
-Compatibility and parity testing against current production model
-        │
-        ▼
-Approved production model (model/production/V<next>/)
-        │
-        ▼
-Python FastAPI inference service (inference_service/)
-        │
-        ▼
-Web application and screening workflow (frontend/ + backend/)
-```
-
-A new model must pass compatibility, evaluation, and integration checks before replacing the current production artifact. Never overwrite `model/production/V2/` without team review.
-
-### MATLAB Training Contributions
-
-Contributing MATLAB training code? Navigate to **`matlab/training/scripts/`** and follow the guide in [`matlab/training/README.md`](matlab/training/README.md).
-
-| Task | Location |
-|---|---|
-| Training entry-point scripts | `matlab/training/scripts/` |
-| Reusable functions, losses, metrics | `matlab/training/functions/` |
-| Experiment configs and hyperparameters | `matlab/training/configs/` |
-| Dataset preparation utilities | `matlab/preprocessing/` |
-| Evaluation and validation scripts | `matlab/evaluation/` |
-| Trained MATLAB artifacts (small only) | `matlab/models/` |
-| Model export and conversion | `matlab/conversion/` |
-| Experiment results and plots | `matlab/results/` |
-
-The starter template [`matlab/training/scripts/train_dr_model.m`](matlab/training/scripts/train_dr_model.m) provides a documented scaffold with placeholders for each pipeline stage. All `[TODO]` sections must be implemented before execution.
 
 ---
 
