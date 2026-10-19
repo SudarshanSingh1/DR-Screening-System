@@ -1,7 +1,7 @@
 # Vision AI - Model Provenance
 
 ## Model
-DR EfficientNetB0 V2
+DR EfficientNetB0 Version 2
 
 ## Production format
 Keras
