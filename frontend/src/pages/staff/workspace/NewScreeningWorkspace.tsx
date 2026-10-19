@@ -152,8 +152,6 @@ export const NewScreeningWorkspace: React.FC = () => {
     setAnalysisError(null);
   };
 
-  if (!selectedPatient) return null;
-
   // Redirect to patient search if accessed directly without a patient
   useEffect(() => {
     if (!selectedPatient) {

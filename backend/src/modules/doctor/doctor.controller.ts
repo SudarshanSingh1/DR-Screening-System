@@ -182,6 +182,7 @@ export async function reanalyzeScreening(req: Request, res: Response) {
         leftOverrideClass = 2; // Moderate DR
         rightOverrideClass = 1; // Mild DR
       }
+      console.warn(`[SAFETY AUDIT WARNING] PRESENTATION_DEMO_MODE is ACTIVE for retryInference on screening ${screeningId}. Results are SIMULATED for UI demonstration purposes only and MUST NOT be used for clinical decision making.`);
     }
 
     let [leftEyeResult, rightEyeResult] = await Promise.all([
@@ -236,7 +237,9 @@ export async function reanalyzeScreening(req: Request, res: Response) {
         discFoveaEvidence: rightEyeResult.discFoveaEvidence,
         lesionEvidence: rightEyeResult.lesionEvidence,
         gradCamEvidence: rightEyeResult.gradCamEvidence
-      } 
+      },
+      isSimulatedDemo: isDemoMode,
+      ...(isDemoMode ? { demoScenario: isScenarioNoDR ? 'SCENARIO_1_NO_DR' : 'SCENARIO_2_DR_DETECTED' } : {})
     };
 
     await prisma.screening.update({
@@ -248,7 +251,10 @@ export async function reanalyzeScreening(req: Request, res: Response) {
 
     res.status(200).json({ 
       success: true, 
-      data: aiResultData
+      data: {
+        ...aiResultData,
+        isSimulatedDemo: isDemoMode
+      }
     });
 
   } catch (err) {

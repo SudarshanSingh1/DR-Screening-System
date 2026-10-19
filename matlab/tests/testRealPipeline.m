@@ -19,27 +19,52 @@ function testRealPipeline()
     addpath(fullfile(baseDir, 'explainability'));
     addpath(fullfile(baseDir, 'reporting'));
 
-    % 2 & 3. Discover actual images
-    testImagesDir = fullfile(rootDir, 'data', 'test_images');
-    if ~isfolder(testImagesDir)
-        error('Test images directory not found: %s', testImagesDir);
+    % 2 & 3. Discover actual test images
+    % Supports both dedicated test data directory (data/test_images/) and repo sample fixtures (frontend/public/images/fundus/)
+    primaryDir = fullfile(rootDir, 'data', 'test_images');
+    fallbackDir = fullfile(rootDir, 'frontend', 'public', 'images', 'fundus');
+    
+    testImages = {};
+    discoveredSource = '';
+
+    if isfolder(primaryDir)
+        levels = {'Level0', 'Level1', 'Level2', 'Level3', 'Level4'};
+        for i = 1:numel(levels)
+            levelDir = fullfile(primaryDir, levels{i});
+            if isfolder(levelDir)
+                imgs = dir(fullfile(levelDir, '*.png'));
+                if ~isempty(imgs)
+                    testImages{end+1} = fullfile(levelDir, imgs(1).name);
+                end
+            end
+        end
+        if ~isempty(testImages)
+            discoveredSource = primaryDir;
+        end
     end
 
-    levels = {'Level0', 'Level1', 'Level2', 'Level3', 'Level4'};
-    testImages = {};
-    for i = 1:numel(levels)
-        levelDir = fullfile(testImagesDir, levels{i});
-        if isfolder(levelDir)
-            imgs = dir(fullfile(levelDir, '*.png'));
-            if ~isempty(imgs)
-                % 4. Select valid test images dynamically (take the first one from each level)
-                testImages{end+1} = fullfile(levelDir, imgs(1).name);
+    % Fallback to repository sample fundus fixtures if primary directory is not populated
+    if isempty(testImages) && isfolder(fallbackDir)
+        sampleFiles = {'level0.png', 'level1.png', 'level2.png', 'level3.png', 'level4.png'};
+        for i = 1:numel(sampleFiles)
+            samplePath = fullfile(fallbackDir, sampleFiles{i});
+            if isfile(samplePath)
+                testImages{end+1} = samplePath;
             end
+        end
+        if ~isempty(testImages)
+            discoveredSource = fallbackDir;
+            fprintf('[INFO] Using repository sample fixtures from: %s\n', fallbackDir);
         end
     end
 
     if isempty(testImages)
-        error('No test images found in %s', testImagesDir);
+        fprintf('\n[PREREQUISITE NOTICE] No sample fundus test images were found.\n');
+        fprintf('  To run the real pipeline test, either:\n');
+        fprintf('  1. Place test images in: %s (structured by Level0/..Level4/)\n', primaryDir);
+        fprintf('  2. Or ensure sample fundus fixtures are in: %s\n', fallbackDir);
+        fprintf('  Refer to matlab/datasets/README.md for dataset acquisition guidelines.\n\n');
+        error('PREREQUISITE_MISSING: Test fundus images not found in data/test_images or frontend/public/images/fundus.');
     end
 
     pass = 0; fail = 0;

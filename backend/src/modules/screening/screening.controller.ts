@@ -232,6 +232,7 @@ export async function analyzeScreening(req: Request, res: Response) {
         leftOverrideClass = 2; // Moderate DR
         rightOverrideClass = 1; // Mild DR
       }
+      console.warn(`[SAFETY AUDIT WARNING] PRESENTATION_DEMO_MODE is ACTIVE for screening ${screeningId}. Results are SIMULATED for UI demonstration purposes only and MUST NOT be used for clinical decision making.`);
     }
 
     // Use the presentation evidence provider instead of real ML inference
@@ -307,7 +308,9 @@ export async function analyzeScreening(req: Request, res: Response) {
           lesion: { image: rightEyeResult.lesionEvidence, label: "Lesion Evidence" },
           gradCam: { image: rightEyeResult.gradCamEvidence, label: "Grad-CAM Attention" }
         }
-      } 
+      },
+      isSimulatedDemo: isDemoMode,
+      ...(isDemoMode ? { demoScenario: isScenarioNoDR ? 'SCENARIO_1_NO_DR' : 'SCENARIO_2_DR_DETECTED' } : {})
     };
 
     // Persist to database
@@ -335,7 +338,8 @@ export async function analyzeScreening(req: Request, res: Response) {
       success: true, 
       data: {
         leftEye: leftEyeResult,
-        rightEye: rightEyeResult
+        rightEye: rightEyeResult,
+        isSimulatedDemo: isDemoMode
       }
     });
 

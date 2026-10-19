@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability Reporting
+    url: https://github.com/Sudarshan-sys/DR-Screening-System/security/policy
+    about: Please report security vulnerabilities privately via our security policy.

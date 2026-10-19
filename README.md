@@ -1056,8 +1056,10 @@ DR-Screening-System/
 │   ├── results/                          #   Experiment summaries and selected plots
 │   └── README.md                         # MATLAB workflow documentation
 │
-├── docs/                                 # Technical documentation
+├── docs/                                 # Clinical and technical documentation
 │   ├── ARCHITECTURE.md                   # System architecture overview
+│   ├── CLINICAL_WORKFLOW.md              # Clinical screening protocol & tele-referral paths
+│   ├── RISK_MANAGEMENT.md                # Clinical risk management, CDSCO & DPDP governance
 │   ├── INFERENCE.md                      # Inference pipeline documentation
 │   ├── GRADCAM.md                        # Grad-CAM implementation details
 │   ├── MODEL.md                          # Model architecture and training notes
@@ -1065,8 +1067,13 @@ DR-Screening-System/
 │   ├── TESTING.md                        # Testing strategy and guidelines
 │   └── GIT_WORKFLOW.md                   # Git branching and contribution workflow
 │
-├── config/                               # Environment templates and configuration
-├── licenses/                             # Third-party license information
+├── .github/                              # CI/CD workflows and community templates
+│   ├── workflows/ci.yml                  # Automated quality, build, and test pipeline
+│   ├── ISSUE_TEMPLATE/                   # Bug, feature, clinical safety, and model eval templates
+│   └── pull_request_template.md          # PR checklist with Clinical Risk Assessment
+├── CONTRIBUTING.md                       # Comprehensive contributor and clinical guidelines
+├── CHANGELOG.md                          # Versioned release notes and changelog
+├── LICENSE                               # Apache 2.0 open-source license with medical disclaimer
 ├── docker-compose.yml                    # 4-service orchestration (DB, API, Inference, Frontend)
 ├── .env.example                          # Environment variable template (no secrets)
 ├── .gitignore                            # Tracked exclusion rules

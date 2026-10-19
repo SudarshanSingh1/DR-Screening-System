@@ -1,0 +1,140 @@
+# Contributing to Vision AI — Diabetic Retinopathy Screening System
+
+Thank you for contributing to the Vision AI project. This platform is engineered for real-world diabetic retinopathy screening workflows in resource-constrained healthcare environments, including rural Primary Health Centres (PHCs) and Community Health Centres (CHCs) in India.
+
+Because this system operates in a healthcare decision-support context, we maintain rigorous engineering, machine learning, and clinical safety standards.
+
+---
+
+## Code of Conduct & Clinical Safety Principles
+
+1. **Patient Data Privacy:** Never commit real patient images, Personal Identifiable Information (PII), or Protected Health Information (PHI) to the repository. Use synthetic or anonymized public datasets.
+2. **Decision Support, Not Primary Diagnosis:** The AI model is designed as a screening triage and clinical decision-support tool. It assists trained healthcare workers and ophthalmologists; it does not replace qualified clinical judgment.
+3. **Model Invariance:** Never modify production model weights, classification heads, or operating thresholds ($0.20798$ referable threshold) without formal evaluation, cross-dataset validation, and clinical sign-off.
+4. **Architectural Separation:** The production web stack (Python FastAPI + Node.js + React) and the research simulation stack (MATLAB + Simulink) are decoupled. Do not introduce MATLAB runtime dependencies into the production web application.
+
+---
+
+## Repository Architecture
+
+```text
+├── frontend/             # React 19, Vite, TypeScript, Tailwind CSS
+├── backend/              # Node.js 20, Express, TypeScript, Prisma, PostgreSQL
+├── inference_service/    # Python 3.11, FastAPI, TensorFlow/Keras
+├── model/                # Production model artifacts, configs, and reference weights
+├── matlab/               # Research algorithms, Simulink models, and training workspace
+├── docs/                 # System architecture, inference, Grad-CAM, clinical workflow docs
+└── docker-compose.yml    # Multi-service local orchestration
+```
+
+---
+
+## Development Setup
+
+### 1. Prerequisites
+- **Node.js**: v20.x or higher
+- **Python**: v3.11.x
+- **Docker & Docker Compose**: v2.20+
+- **MATLAB** (Optional, research only): R2023b+ with Deep Learning & Image Processing Toolboxes
+
+### 2. Environment Configuration
+Copy the sanitized environment template:
+```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+Ensure `PRESENTATION_DEMO_MODE="false"` in your local environment for genuine AI inference.
+
+### 3. Local Docker Orchestration
+```bash
+docker compose up --build
+```
+- Frontend: `http://localhost:3000`
+- Backend API: `http://localhost:8080`
+- Inference Service: `http://localhost:8000`
+
+---
+
+## Quality Standards & Testing
+
+Before submitting a pull request, verify that all automated checks pass locally.
+
+### Frontend
+```bash
+cd frontend
+npm ci
+npm run build    # tsc -b && vite build
+npm run lint     # oxlint
+```
+
+### Backend
+```bash
+cd backend
+npm ci
+npx prisma generate
+npm run build    # tsc
+npm test         # node --test dist/tests/**/*.test.js
+```
+
+### Python Inference Service
+```bash
+# In your Python virtual environment:
+python -m py_compile inference_service/*.py
+python -m unittest discover -s inference_service/tests
+```
+
+### Docker Compose
+```bash
+docker compose config --quiet
+```
+
+### MATLAB Tests (When licensed runner is available)
+```matlab
+% In MATLAB Command Window:
+cd('matlab/tests')
+testRealPipeline
+```
+
+---
+
+## Git Workflow & Branching Conventions
+
+We follow a structured Git branching model:
+
+| Branch | Purpose |
+|---|---|
+| `main` | Production-ready, verified code. Protected branch. |
+| `develop` | Integration branch for upcoming releases. |
+| `feature/<scope>-<description>` | New features (e.g., `feature/backend-audit-logger`). |
+| `fix/<scope>-<description>` | Bug fixes (e.g., `fix/docker-uploads-volume`). |
+| `feat(matlab)/<description>` | MATLAB training and simulation contributions. |
+
+### Commit Message Conventions
+Follow Conventional Commits:
+- `feat(frontend): add dual-eye zoom in screening viewer`
+- `fix(backend): correct storage path for referral reports`
+- `docs: update clinical workflow and referral escalation paths`
+- `perf(inference): optimize bilinear resizing pipeline`
+- `test(inference): add unit tests for evidence generator`
+
+---
+
+## Model Contribution Guidelines
+
+1. **New Models:** Train and evaluate new architectures in `matlab/training/` or an external training notebook. Follow the contributor guide in [`matlab/training/README.md`](matlab/training/README.md).
+2. **Export to Production:** Export validated weights to `.keras` format matching the input contract:
+   - Input shape: `(None, 224, 224, 3)`
+   - Pixel range: `[0.0, 255.0]` float32 (RGB)
+   - Grad-CAM layer: `top_activation`
+   - Output: 5-class softmax probabilities (ICDR 0–4)
+3. **Versioning:** Never overwrite existing models. Save new candidates in `model/production/V3/` and document evaluation metrics (Quadratic Weighted Kappa, Accuracy, Referable Sensitivity/Specificity) in `model/config/model_config.json`.
+
+---
+
+## Pull Request Process
+
+1. Open a PR against `develop` (or `main` for hotfixes).
+2. Fill out the [Pull Request Template](.github/pull_request_template.md) completely, including the **Clinical Risk Assessment** checklist.
+3. Ensure CI checks pass.
+4. Request review from at least one core engineer and one clinical/domain reviewer where applicable.
