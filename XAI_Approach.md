@@ -14,6 +14,7 @@ The system follows a structured workflow for processing retinal fundus images an
 
 ### 2.1 Workflow
 
+
 ```text
 Retinal Fundus Image
         |
