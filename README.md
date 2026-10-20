@@ -89,171 +89,199 @@ The platform combines an on-site deterministic **Image Quality Gate**, an **Effi
 
 ## 3. Main Screening Architecture
 
-The core screening workflow intercepts ungradable captures before deep learning inference, routes passing images to the classifier and Grad-CAM generator, and consolidates bilateral outputs into the specialist triage queue:
+The core screening workflow processes bilateral fundus images through independent parallel quality gates and inference pipelines before merging into the specialist triage queue:
 
 ```mermaid
 flowchart TD
     subgraph S1 ["1. Bilateral Image Ingestion"]
-        LE["Left Eye (OS) Fundus Image<br/><i>multipart/form-data</i>"]
-        RE["Right Eye (OD) Fundus Image<br/><i>multipart/form-data</i>"]
+        LE_IN["<b>Left Eye (OS) Fundus Image</b><br/><i>multipart/form-data</i>"]
+        RE_IN["<b>Right Eye (OD) Fundus Image</b><br/><i>multipart/form-data</i>"]
     end
 
-    subgraph S2 ["2. Image Quality Gate (Automated Pre-Check)"]
-        QG{"Quality Evaluation<br/>• Laplacian Blur (Var ≥ 12.0)<br/>• Illumination (30 ≤ Mean ≤ 235)<br/>• Dimensions (W,H ≥ 150px, AR ≤ 2.5)"}
-        RECAP["<b>Recapture Required (422)</b><br/><i>Returns specific rejection cause:<br/>defocus blur, underexposure, glare, or size</i>"]
+    subgraph S2 ["2. Automated Image Quality Gate (Dual Channel)"]
+        QG_LE{"<b>OS Quality Check</b><br/>• Blur (Laplacian Var ≥ 12.0)<br/>• Illumination (30 ≤ μ ≤ 235)<br/>• Min Dim (≥ 150px, AR ≤ 2.5)"}
+        QG_RE{"<b>OD Quality Check</b><br/>• Blur (Laplacian Var ≥ 12.0)<br/>• Illumination (30 ≤ μ ≤ 235)<br/>• Min Dim (≥ 150px, AR ≤ 2.5)"}
+        RECAP_LE["<b>OS Recapture Required (422)</b><br/><i>Specific cause: defocus blur, underexposure,<br/>glare washout, or insufficient resolution</i>"]
+        RECAP_RE["<b>OD Recapture Required (422)</b><br/><i>Specific cause: defocus blur, underexposure,<br/>glare washout, or insufficient resolution</i>"]
     end
 
-    subgraph S3 ["3. Deep Learning Inference Gateway (FastAPI)"]
+    subgraph S3 ["3. FastAPI Inference Gateway & Deep Learning Models"]
         direction TB
-        M5["<b>EfficientNetB0 V2 Backbone</b><br/><i>240 layers, 4.05M params (ImageNet weights)</i>"]
-        PRED["<b>5-Class Softmax Head</b><br/><i>p0..p4 + Tail-Sum Triage Rule:<br/>P(Referable) = ∑(p2..p4) ≥ 0.20798</i>"]
-        XAI["<b>Logits Grad-CAM Generator</b><br/><i>∂z_c / ∂A on top_activation (7x7x1280)</i>"]
-        M5 --> PRED
-        M5 --> XAI
+        M5_LE["<b>OS EfficientNetB0 V2</b><br/><i>240 layers (ImageNet weights)</i>"]
+        M5_RE["<b>OD EfficientNetB0 V2</b><br/><i>240 layers (ImageNet weights)</i>"]
+        PRED_LE["<b>OS Five-Class DR Prediction</b><br/><i>Softmax [p0..p4]</i>"]
+        PRED_RE["<b>OD Five-Class DR Prediction</b><br/><i>Softmax [p0..p4]</i>"]
+        XAI_LE["<b>OS Grad-CAM Explainability</b><br/><i>Logits gradient on top_activation</i>"]
+        XAI_RE["<b>OD Grad-CAM Explainability</b><br/><i>Logits gradient on top_activation</i>"]
+
+        M5_LE --> PRED_LE
+        M5_LE --> XAI_LE
+        M5_RE --> PRED_RE
+        M5_RE --> XAI_RE
     end
 
-    subgraph S4 ["4. Clinical Tele-Review Queue"]
-        TRIAGE["<b>Worst-Eye Priority Triage</b><br/><i>Priority = max(Grade_Left, Grade_Right)</i>"]
-        DOC{"<b>Ophthalmologist Review</b><br/><i>Confirm / modify grade, inspect Grad-CAM</i>"}
-        TRIAGE --> DOC
+    subgraph S4 ["4. Doctor Review Queue & Clinical Decision"]
+        TRIAGE["<b>Doctor Review Queue & Worst-Eye Triage</b><br/><i>Referral Urgency = max(Grade_OS, Grade_OD)<br/>isReferable: P(Referable) = ∑(p2..p4) ≥ 0.20798</i>"]
+        DOC_EVAL{"<b>Clinical Decision (Ophthalmologist)</b><br/><i>Side-by-side inspection, opacity blending,<br/>confirm or override DR severity</i>"}
+        TRIAGE --> DOC_EVAL
     end
 
-    subgraph S5 ["5. Clinical Output"]
-        REP["<b>Clinical Referral Report (PDF)</b><br/><i>Bilingual summary, specialist notes, QR verify</i>"]
+    subgraph S5 ["5. Clinical Referral & Final Report"]
+        ROUTINE["<b>Routine Community Follow-Up</b><br/><i>Levels 0–1 (Non-referable): 12-mo PHC review</i>"]
+        URGENT["<b>Urgent Specialist Referral</b><br/><i>Levels 2–4 (Referable): District Hospital care</i>"]
+        FINAL_REP["<b>Clinical Referral / Final Report (PDF)</b><br/><i>Bilingual summary, specialist signature, QR verify</i>"]
+
+        ROUTINE --> FINAL_REP
+        URGENT --> FINAL_REP
     end
 
-    LE --> QG
-    RE --> QG
-    QG -->|FAIL: Ungradable| RECAP
-    RECAP -.->|Immediate Recapture at PHC| LE
-    RECAP -.->|Immediate Recapture at PHC| RE
-    QG -->|PASS: Gradable| M5
-    PRED --> TRIAGE
-    XAI --> TRIAGE
-    DOC --> REP
+    LE_IN --> QG_LE
+    RE_IN --> QG_RE
+
+    QG_LE -->|FAIL: Ungradable| RECAP_LE
+    RECAP_LE -.->|Prompt Immediate Recapture| LE_IN
+    QG_LE -->|PASS: Gradable| M5_LE
+
+    QG_RE -->|FAIL: Ungradable| RECAP_RE
+    RECAP_RE -.->|Prompt Immediate Recapture| RE_IN
+    QG_RE -->|PASS: Gradable| M5_RE
+
+    PRED_LE --> TRIAGE
+    XAI_LE --> TRIAGE
+    PRED_RE --> TRIAGE
+    XAI_RE --> TRIAGE
+
+    DOC_EVAL -->|Level 0–1: Mild/None| ROUTINE
+    DOC_EVAL -->|Level 2–4: Moderate+| URGENT
 
     classDef input stroke:#2563eb,stroke-width:2px,fill:#eff6ff,color:#1e3a8a;
-    classDef gatePass stroke:#059669,stroke-width:2px,fill:#ecfdf5,color:#064e3b;
-    classDef gateFail stroke:#dc2626,stroke-width:2px,fill:#fef2f2,color:#7f1d1d;
+    classDef passGate stroke:#059669,stroke-width:2px,fill:#ecfdf5,color:#064e3b;
+    classDef failGate stroke:#dc2626,stroke-width:2px,fill:#fef2f2,color:#7f1d1d;
     classDef mlEngine stroke:#7c3aed,stroke-width:2px,fill:#f5efff,color:#2e1065;
     classDef clinical stroke:#ea580c,stroke-width:2px,fill:#fff7ed,color:#7c2d12;
     classDef output stroke:#059669,stroke-width:2px,fill:#d1fae5,color:#065f46;
 
-    class LE,RE input;
-    class QG gatePass;
-    class RECAP gateFail;
-    class M5,PRED,XAI mlEngine;
-    class TRIAGE,DOC clinical;
-    class REP output;
+    class LE_IN,RE_IN input;
+    class QG_LE,QG_RE passGate;
+    class RECAP_LE,RECAP_RE failGate;
+    class M5_LE,M5_RE,PRED_LE,PRED_RE,XAI_LE,XAI_RE mlEngine;
+    class TRIAGE,DOC_EVAL clinical;
+    class ROUTINE,URGENT,FINAL_REP output;
 ```
 
 ---
 
 ## 4. Software Architecture
 
-Vision AI is structured as a multi-tier decoupled system deployed via Docker Compose. The diagram below illustrates the actual runtime services, inter-service protocols, persistent volumes, and role-based data boundaries:
+Vision AI is structured as a multi-tier decoupled system deployed via Docker Compose. The diagram below illustrates the exact runtime services, authentication guards, storage tiers, and interactive clinical workflows:
 
 ```mermaid
 flowchart TD
-    subgraph Presentation ["Presentation Tier (React 18 + Vite + TailwindCSS)"]
-        UI_STAFF["<b>Screening Staff Portal</b><br/><i>Patient intake, bilateral camera upload, quality alerts</i>"]
-        UI_DOC["<b>Doctor Review Portal</b><br/><i>Prioritized queue, side-by-side inspection, Grad-CAM toggle</i>"]
-        UI_PAT["<b>Patient Portal</b><br/><i>Direct report download, referral tracking</i>"]
+    subgraph Frontend_Portals ["Frontend Portals (React 18 + Vite + TailwindCSS)"]
+        STAFF_WF["<b>Staff Screening Workflow</b><br/><i>Patient intake, bilateral camera capture, quality alert feedback</i>"]
+        DOC_WF["<b>Doctor Review Workflow</b><br/><i>Tele-review queue, Grad-CAM opacity toggle, diagnostic sign-off</i>"]
+        PATIENT_ACCESS["<b>Patient Report Access</b><br/><i>Direct PDF download, referral tracking, verification QR view</i>"]
     end
 
-    subgraph GatewayTier ["Application Gateway (Node.js 20 + Express 5)"]
-        AUTH_MW["<b>Auth & RBAC Middleware</b><br/><i>Session cookie / Bearer token validation</i>"]
-        API_ROUTER["<b>REST API Gateway</b><br/><i>/api/screenings, /api/patients, /api/reviews</i>"]
-        PDF_SVC["<b>PDFKit Report Engine</b><br/><i>Bilingual layout, QR code rendering</i>"]
-        AUTH_MW --> API_ROUTER
-        API_ROUTER --> PDF_SVC
+    subgraph Security_Gateway ["Application Gateway & Security (Node.js 20 + Express 5)"]
+        AUTH_RBAC["<b>Authentication and Role-Based Access</b><br/><i>Session cookie / JWT guard (STAFF, DOCTOR, PATIENT)</i>"]
+        BACKEND_API["<b>Backend API</b><br/><i>Express REST router: /api/screenings, /api/patients, /api/reviews</i>"]
+        REPORT_GEN["<b>Clinical Report Generation</b><br/><i>PDFKit bilingual engine, specialist signature, QR rendering</i>"]
+        AUTH_RBAC --> BACKEND_API
+        BACKEND_API --> REPORT_GEN
     end
 
-    subgraph InferenceTier ["AI Inference Microservice (FastAPI + TensorFlow 2.x)"]
-        FASTAPI["<b>FastAPI Ingestion Router</b><br/><i>POST /analyze, POST /quality-check (Port 8000)</i>"]
-        QG_CODE["<b>Quality Gate Module</b><br/><i>Laplacian blur, brightness range, dimension checks</i>"]
-        MODEL_KERAS["<b>EfficientNetB0 V2 Classifier</b><br/><i>DR_EfficientNetB0_V2.keras (240 layers)</i>"]
-        GRADCAM_CODE["<b>Grad-CAM Explainability Engine</b><br/><i>Pre-softmax gradient attribution on top_activation</i>"]
-        FASTAPI --> QG_CODE
-        QG_CODE --> MODEL_KERAS
-        MODEL_KERAS --> GRADCAM_CODE
+    subgraph Inference_Tier ["Python AI Inference Service (FastAPI + TensorFlow 2.x)"]
+        FASTAPI_SVC["<b>Python/FastAPI Inference Service</b><br/><i>Async microservice (Port 8000), POST /analyze, POST /quality-check</i>"]
+        QG_MOD["<b>Image Quality Gate</b><br/><i>Scale-invariant Laplacian blur variance & luminance filter</i>"]
+        ENET_MODEL["<b>EfficientNetB0 V2 Model</b><br/><i>Production classifier: DR_EfficientNetB0_V2.keras (240 layers)</i>"]
+        GRADCAM_GEN["<b>Grad-CAM Generation</b><br/><i>Pre-softmax gradient attribution on layer top_activation</i>"]
+        FASTAPI_SVC --> QG_MOD
+        QG_MOD --> ENET_MODEL
+        ENET_MODEL --> GRADCAM_GEN
     end
 
-    subgraph StorageTier ["Persistence & Filesystem Tier"]
-        DB[("<b>PostgreSQL 16 (Prisma ORM)</b><br/><i>Users, Patients, Screenings, Reviews, AuditLogs</i>")]
-        VOL_UPLOADS["<b>Image Storage (/uploads)</b><br/><i>Original fundus images (leftEye, rightEye)</i>"]
-        VOL_REPORTS["<b>Report Storage (/reports)</b><br/><i>Generated immutable PDF referral documents</i>"]
+    subgraph Persistence_Tier ["Persistence & Storage Layer"]
+        PG_DB[("<b>PostgreSQL Database (Prisma)</b><br/><i>Relational schema: Patients, Screenings, Reviews, AuditLogs</i>")]
+        IMG_STORAGE["<b>Original Fundus Image Storage</b><br/><i>Secure volume (/uploads) for raw OS/OD captures</i>"]
+        REP_STORAGE["<b>Generated Report Storage</b><br/><i>Immutable volume (/reports) for signed PDF referral documents</i>"]
     end
 
-    UI_STAFF --> AUTH_MW
-    UI_DOC --> AUTH_MW
-    UI_PAT --> AUTH_MW
+    STAFF_WF --> AUTH_RBAC
+    DOC_WF --> AUTH_RBAC
+    PATIENT_ACCESS --> AUTH_RBAC
 
-    API_ROUTER -->|Multipart Ingestion| FASTAPI
-    FASTAPI -->|Softmax Probs & Base64 Heatmaps| API_ROUTER
+    BACKEND_API -->|Multipart Image Stream| FASTAPI_SVC
+    FASTAPI_SVC -->|Softmax Probabilities & Grad-CAM Heatmaps| BACKEND_API
 
-    API_ROUTER -->|SQL Queries via Prisma| DB
-    API_ROUTER -->|Save Encoded Images| VOL_UPLOADS
-    PDF_SVC -->|Write Signed PDF| VOL_REPORTS
+    BACKEND_API -->|SQL Queries via Prisma ORM| PG_DB
+    BACKEND_API -->|Persist Raw Fundus Files| IMG_STORAGE
+    REPORT_GEN -->|Write Signed PDF Documents| REP_STORAGE
 
-    UI_DOC -.->|Fetch Fundus & Grad-CAM| VOL_UPLOADS
-    UI_PAT -.->|Download Signed PDF| VOL_REPORTS
+    DOC_WF -.->|Inspect Raw Fundus & Grad-CAM Overlays| IMG_STORAGE
+    PATIENT_ACCESS -.->|Fetch Signed Referral PDF| REP_STORAGE
 
-    classDef ui stroke:#2563eb,stroke-width:2px,fill:#eff6ff,color:#1e3a8a;
-    classDef gw stroke:#059669,stroke-width:2px,fill:#ecfdf5,color:#064e3b;
-    classDef ai stroke:#7c3aed,stroke-width:2px,fill:#f5efff,color:#2e1065;
-    classDef db stroke:#ea580c,stroke-width:2px,fill:#fff7ed,color:#7c2d12;
+    classDef uiBox stroke:#2563eb,stroke-width:2px,fill:#eff6ff,color:#1e3a8a;
+    classDef gwBox stroke:#059669,stroke-width:2px,fill:#ecfdf5,color:#064e3b;
+    classDef aiBox stroke:#7c3aed,stroke-width:2px,fill:#f5efff,color:#2e1065;
+    classDef dbBox stroke:#ea580c,stroke-width:2px,fill:#fff7ed,color:#7c2d12;
 
-    class UI_STAFF,UI_DOC,UI_PAT ui;
-    class AUTH_MW,API_ROUTER,PDF_SVC gw;
-    class FASTAPI,QG_CODE,MODEL_KERAS,GRADCAM_CODE ai;
-    class DB,VOL_UPLOADS,VOL_REPORTS db;
+    class STAFF_WF,DOC_WF,PATIENT_ACCESS uiBox;
+    class AUTH_RBAC,BACKEND_API,REPORT_GEN gwBox;
+    class FASTAPI_SVC,QG_MOD,ENET_MODEL,GRADCAM_GEN aiBox;
+    class PG_DB,IMG_STORAGE,REP_STORAGE dbBox;
 ```
 
 ---
 
 ## 5. End-to-End Patient Workflow
 
-The diagram below tracks clinical data progression from patient intake to report issuance, distinguishing raw photographs, model predictions, explainability heatmaps, doctor inputs, and final clinical documents:
+The sequential data-flow diagram below traces patient progression through the nine operational steps while distinguishing the underlying clinical data artifacts:
 
 ```mermaid
 flowchart LR
-    subgraph Phase1 ["1. Intake & Ingestion"]
-        A1["<b>Patient Registration</b><br/><i>Demographics & opaque ID</i>"]
-        A2["<b>Bilateral Upload</b><br/><i>leftEye & rightEye streams</i>"]
+    subgraph StepGroup1 ["Intake & Image Ingestion"]
+        S1["<b>1. Patient Registration</b><br/><i>Demographics & opaque ID</i>"]
+        S2["<b>2. Bilateral Image Upload</b><br/><i>leftEye & rightEye files</i>"]
         D_RAW[("📷 <b>Original Fundus Images</b><br/><i>Raw RGB uint8 files<br/>(Stored in /uploads)</i>")]:::rawImg
-        A1 --> A2
-        A2 --> D_RAW
+        S1 --> S2
+        S2 --> D_RAW
     end
 
-    subgraph Phase2 ["2. Validation & Inference"]
-        A3["<b>Quality Validation</b><br/><i>Blur, luminance, geometry</i>"]
-        A4["<b>EfficientNetB0 V2</b><br/><i>Feature extraction</i>"]
-        D_PROB["📊 <b>Prediction Vector</b><br/><i>5-Class Softmax [p0..p4]<br/>+ isReferable boolean</i>"]:::probData
-        D_EVID["🔬 <b>AI Visual Evidence</b><br/><i>Grad-CAM attention map<br/>(top_activation overlay)</i>"]:::aiEvid
-        D_RAW --> A3
-        A3 -->|PASS| A4
-        A4 --> D_PROB
-        A4 --> D_EVID
+    subgraph StepGroup2 ["Automated AI Analysis"]
+        S3["<b>3. Image Validation</b><br/><i>Laplacian blur & brightness</i>"]
+        S4["<b>4. AI Analysis</b><br/><i>EfficientNetB0 V2</i>"]
+        S5["<b>5. Screening Results</b><br/><i>Automated triage classification</i>"]
+        D_PROB["📊 <b>Prediction Probabilities</b><br/><i>5-Class softmax [p0..p4]<br/>+ isReferable boolean</i>"]:::probData
+        D_EVID["🔬 <b>AI-Generated Evidence</b><br/><i>Grad-CAM attention overlay<br/>(top_activation heatmap)</i>"]:::aiEvid
+
+        D_RAW --> S3
+        S3 -->|PASS| S4
+        S4 --> S5
+        S4 --> D_PROB
+        S4 --> D_EVID
     end
 
-    subgraph Phase3 ["3. Specialist Tele-Review"]
-        A5["<b>Doctor Tele-Review</b><br/><i>Worst-eye triage priority</i>"]
-        A6["<b>Clinical Decision</b><br/><i>Diagnostic validation</i>"]
-        D_CLIN["🩺 <b>Doctor Clinical Input</b><br/><i>Confirmed grade, notes,<br/>referral timeframe</i>"]:::docData
-        D_PROB --> A5
-        D_EVID --> A5
-        A5 --> A6
-        A6 --> D_CLIN
+    subgraph StepGroup3 ["Specialist Tele-Review"]
+        S6["<b>6. Doctor Review</b><br/><i>Side-by-side tele-review queue</i>"]
+        S7["<b>7. Clinical Decision</b><br/><i>Confirm / override diagnosis</i>"]
+        D_CLIN["🩺 <b>Doctor Clinical Info</b><br/><i>Confirmed severity grade,<br/>clinical notes, referral</i>"]:::docData
+
+        S5 --> S6
+        D_PROB --> S6
+        D_EVID --> S6
+        S6 --> S7
+        S7 --> D_CLIN
     end
 
-    subgraph Phase4 ["4. Referral & Delivery"]
-        A7["<b>Report Engine</b><br/><i>Bilingual PDFKit synthesis</i>"]
-        A8["<b>Patient Access</b><br/><i>Direct download / QR verify</i>"]
-        D_REP[("📄 <b>Signed Referral Report</b><br/><i>Immutable PDF document<br/>(Stored in /reports)</i>")]:::repData
-        D_CLIN --> A7
-        A7 --> D_REP
-        D_REP --> A8
+    subgraph StepGroup4 ["Delivery & Patient Access"]
+        S8["<b>8. Final PDF Report</b><br/><i>Bilingual report generation</i>"]
+        S9["<b>9. Patient Access</b><br/><i>Portal download & QR view</i>"]
+        D_REP[("📄 <b>Generated Reports</b><br/><i>Immutable signed PDF<br/>(Stored in /reports)</i>")]:::repData
+
+        D_CLIN --> S8
+        S8 --> D_REP
+        D_REP --> S9
     end
 
     classDef rawImg stroke:#2563eb,stroke-width:2px,fill:#dbeafe,color:#1e40af;
@@ -314,6 +342,16 @@ Contingency Matrix (Referable DR threshold = Level 2+):
                              Predicted Non-Referable     Predicted Referable
 Actual Non-Referable (0–1)           TN = 3                    FP = 3
 Actual Referable (2–4)               FN = 7                    TP = 2
+
+Visual Diagnostic Performance vs. Clinical Targets:
+Metric                    Score    Empirical Gauge             Clinical Target Standard
+────────────────────────────────────────────────────────────────────────────────────────
+Sensitivity (Recall)      22.2%    ████░░░░░░░░░░░░░░░░        ≥ 93.0% (Developmental)
+Specificity               50.0%    ██████████░░░░░░░░░░        ≥ 87.5% (Developmental)
+Precision (PPV)           40.0%    ████████░░░░░░░░░░░░        High positive yield
+Negative Pred Val (NPV)   30.0%    ██████░░░░░░░░░░░░░░        High rule-out safety
+Overall Accuracy          33.3%    ███████░░░░░░░░░░░░░        5-Class Challenge Set
+Binary F1-Score           0.2857   ██████░░░░░░░░░░░░░░        ≥ 0.8800 (Target)
 ```
 
 ### Critical Findings & Clinical Implications:
