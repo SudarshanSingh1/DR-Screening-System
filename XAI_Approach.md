@@ -2,39 +2,47 @@
 
 ## 1. Overview
 
-This document describes the Explainable Artificial Intelligence (XAI) approach used in the **Diabetic Retinopathy Screening** project.
+This document describes the Explainable Artificial Intelligence (XAI) approach for the Diabetic Retinopathy Screening System.
 
-The objective of the project is to classify retinal fundus images into different diabetic retinopathy severity levels while providing an explanation of the regions that influenced the model's prediction.
+The objective of this project is to classify retinal fundus images into different diabetic retinopathy (DR) severity levels while providing visual explanations of the regions that influenced the model's predictions.
 
-The system combines image preprocessing, retinal feature analysis, deep learning-based classification, and explainability techniques.
-
----
+The system combines image preprocessing, retinal feature analysis, deep learning-based classification, and explainability techniques to improve the transparency and interpretability of model outputs.
 
 ## 2. System Pipeline
 
-The overall workflow is:
+The system follows a structured workflow for processing retinal fundus images and generating screening results.
+
+### 2.1 Workflow
 
 ```text
 Retinal Fundus Image
-        ↓
+        |
+        v
 Image Preprocessing
-        ↓
-Blood Vessel Analysis
-        ↓
-Exudate Detection
-        ↓
-EfficientNetV2
-        ↓
-DR Severity Classification
-        ↓
-XAI Analysis
-        ↓
-Prediction + Visual Explanation
+        |
+        v
+Retinal Feature Analysis
+        |
+        v
+EfficientNetV2 Classification
+        |
+        v
+DR Severity Prediction
+        |
+        v
+Explainable AI Visualization
+        |
+        v
+Prediction and Explanation
 ```
 
-The model classifies diabetic retinopathy into five severity levels:
+The workflow represents the intended processing stages. Each stage should be verified against the actual implementation.
 
-| Class | Description |
+### 2.2 Diabetic Retinopathy Severity Levels
+
+The classification task includes five severity categories:
+
+| Class | Severity Level |
 |---|---|
 | 0 | No Diabetic Retinopathy |
 | 1 | Mild |
@@ -42,196 +50,238 @@ The model classifies diabetic retinopathy into five severity levels:
 | 3 | Severe |
 | 4 | Proliferative Diabetic Retinopathy |
 
----
-
 ## 3. Image Preprocessing
 
-Before sending an image to the deep learning model, preprocessing is performed to improve consistency between input images.
+Image preprocessing prepares retinal fundus images for analysis by the deep learning model. It helps maintain consistent input characteristics and reduces unwanted variations that may affect classification.
 
-The preprocessing pipeline includes:
+### 3.1 Preprocessing Steps
 
-- Image resizing
-- Image normalization
-- Image quality enhancement
-- Removal/reduction of unwanted noise
-- Preparation of the image for model input
+1. **Image Resizing:** Adjusts the image to the dimensions required by the model.
+2. **Image Normalization:** Scales pixel values according to the model's input requirements.
+3. **Image Quality Enhancement:** Improves image visibility when supported by the implemented preprocessing method.
+4. **Noise Reduction:** Reduces unwanted noise while preserving relevant retinal details, if implemented.
+5. **Input Preparation:** Converts the processed image into the appropriate format for model inference.
 
-The preprocessing stage helps the model focus on clinically relevant retinal patterns rather than differences caused by image size or acquisition conditions.
+### 3.2 Importance of Preprocessing
 
----
+Consistent preprocessing helps align inference inputs with the model's training requirements. Differences in image dimensions, brightness, or acquisition conditions may affect prediction quality.
+
+The same preprocessing procedure used during training should be applied during inference.
 
 ## 4. Retinal Feature Analysis
 
+Retinal feature analysis focuses on structures and abnormalities that may be relevant to diabetic retinopathy screening.
+
 ### 4.1 Blood Vessel Analysis
 
-Blood vessels are important structures in retinal images and can provide useful information for diabetic retinopathy analysis.
+Blood vessels are important structures in retinal fundus images. Their appearance and patterns may provide useful information about retinal conditions.
 
-Computer vision techniques are used to identify and analyze retinal blood vessel patterns.
+Computer vision techniques can be used to identify and analyze vessel patterns. The extracted information may support image interpretation and research.
 
-The extracted vessel information can help identify structural abnormalities and provide additional information about the retinal condition.
+The specific vessel analysis method and its outputs should be documented according to the implemented code.
 
 ### 4.2 Exudate Detection
 
-Exudates are bright lesions that may appear in retinal images as a result of diabetic retinopathy.
+Exudates are lipid-rich deposits that may appear as bright regions in retinal images and can be associated with diabetic retinopathy.
 
-The system analyzes retinal images to identify regions that may correspond to exudates.
+Image analysis techniques may help identify regions that resemble exudates. These regions can provide additional visual information for research and screening support.
 
-These regions provide additional visual information that can support the classification process.
-
----
+Potential exudate regions must not be treated as confirmed lesions without appropriate validation.
 
 ## 5. Deep Learning Model
 
-### EfficientNetV2
+### 5.1 EfficientNetV2 Architecture
 
-The classification component uses **EfficientNetV2** as the deep learning architecture.
+The project documentation identifies EfficientNetV2 as the deep learning architecture used for diabetic retinopathy classification.
 
-The model receives a preprocessed retinal image and predicts the corresponding diabetic retinopathy severity level.
+The model processes a preprocessed retinal image and predicts a corresponding severity category.
+
+### 5.2 Classification Workflow
 
 ```text
-Input Image
-     ↓
-EfficientNetV2
-     ↓
+Preprocessed Retinal Image
+          |
+          v
 Feature Extraction
-     ↓
+          |
+          v
 Classification Layer
-     ↓
-DR Severity
+          |
+          v
+Predicted DR Severity Class
 ```
 
-EfficientNetV2 was selected because it provides a good balance between model performance and computational efficiency, making it suitable for image classification tasks.
+EfficientNetV2 is designed to balance computational efficiency and model performance. Its suitability for this project should be assessed using the actual training and evaluation results.
 
----
+### 5.3 Prediction Output
 
-## 6. Explainable AI
+The classification output may include:
 
-A major objective of this project is not only to obtain a prediction but also to understand **why the model produced that prediction**.
+- Predicted diabetic retinopathy severity class.
+- Class probabilities or confidence scores, if provided by the implementation.
+- Additional visual explanations generated by the XAI component, if available.
 
-Deep learning models can sometimes behave like a black box. XAI techniques are therefore used to visualize the image regions that contribute to the model's decision.
+Confidence scores should be calculated from actual model outputs and should not automatically be interpreted as the probability that a diagnosis is correct.
 
-### XAI Workflow
+## 6. Explainable Artificial Intelligence (XAI)
+
+### 6.1 Purpose of XAI
+
+Deep learning models can be difficult to interpret because their internal decision-making processes are complex. Explainable AI techniques help visualize or analyze the image regions that influence a model's prediction.
+
+In this project, XAI is intended to improve transparency by providing a visual explanation alongside the predicted diabetic retinopathy class.
+
+### 6.2 XAI Workflow
 
 ```text
-Retinal Image
-      ↓
-EfficientNetV2
-      ↓
+Retinal Fundus Image
+          |
+          v
+Trained Classification Model
+          |
+          v
 Predicted DR Class
-      ↓
-XAI Method
-      ↓
-Importance / Activation Map
-      ↓
-Overlay on Original Image
+          |
+          v
+Explainability Method
+          |
+          v
+Importance or Activation Map
+          |
+          v
+Visualization on Original Image
 ```
 
-The resulting visualization highlights areas that had a stronger influence on the model's prediction.
+The diagram describes a general XAI workflow. The specific explainability method should match the technique implemented in the project.
 
----
+### 6.3 Interpretation of XAI Results
 
-## 7. Interpretation of XAI Results
+An XAI visualization highlights image regions that contributed to the model's prediction according to the selected explanation method.
 
-The XAI visualization can be used to determine whether the model is focusing on meaningful retinal structures.
+These regions may be compared with visible retinal structures, including blood vessels and potential abnormalities.
 
-For example, the explanation may highlight regions containing:
+However, highlighted regions do not necessarily correspond to confirmed lesions. An explanation map indicates aspects of model behavior rather than proving that a prediction is medically correct.
 
-- Exudates
-- Abnormal blood vessels
-- Lesions
-- Other retinal abnormalities
+### 6.4 Benefits of XAI
 
-The explanation does not replace a medical professional's diagnosis. Instead, it provides a visual interpretation of the model's decision and can help researchers and clinicians understand model behavior.
+- **Transparency:** Helps users inspect model behavior.
+- **Interpretability:** Provides additional information alongside a predicted class.
+- **Model Debugging:** Helps identify unexpected attention patterns.
+- **Research Support:** Assists researchers in analyzing model decisions.
+- **Clinical Review Support:** May provide supplementary information for qualified healthcare professionals.
 
----
+## 7. Interpretation of Predictions
 
-## 8. Example Explanation
+The system's output should be interpreted using both the predicted class and any available explanation.
 
-A typical prediction can be represented as:
+### 7.1 Prediction Components
+
+A screening result may contain:
+
+| Component | Description |
+|---|---|
+| Input Image | Retinal fundus image submitted for analysis |
+| Predicted Class | Severity category predicted by the model |
+| Confidence Score | Model-generated score, if available |
+| XAI Visualization | Visual explanation generated by the implemented method |
+| Review Status | Additional review information, if supported by the application |
+
+### 7.2 Example Output Format
+
+The following is a demonstration template, not an actual model result.
 
 ```text
 Input:
 Retinal Fundus Image
 
 Prediction:
-DR Grade 3 — Severe
+[Predicted DR Severity Class]
 
 Confidence:
-XX%
-
-Important Regions:
-Highlighted retinal regions
+[Actual Model-Generated Score, If Available]
 
 Explanation:
-The XAI visualization indicates the image regions that
-contributed most strongly to the predicted class.
+[Generated XAI Visualization, If Available]
 ```
 
-> **Note:** Actual confidence values and predictions should be generated from the trained model and should not be manually assigned.
+Actual predictions and confidence scores must be obtained from the trained model. They must not be manually assigned or presented as experimental findings.
 
----
+### 7.3 Responsible Interpretation
 
-## 9. Evaluation
+The prediction and explanation should be treated as supplementary screening information. Final clinical interpretation requires assessment by a qualified healthcare professional.
 
-The model should be evaluated using multiple performance metrics rather than accuracy alone.
+## 8. Model Evaluation
 
-Recommended metrics include:
+The model should be evaluated using multiple metrics to understand its performance across different severity categories.
+
+### 8.1 Evaluation Metrics
 
 | Metric | Purpose |
 |---|---|
-| Accuracy | Overall classification performance |
-| Precision | Correctness of positive predictions |
-| Recall | Ability to identify relevant cases |
-| F1-Score | Balance between precision and recall |
-| Confusion Matrix | Class-wise prediction analysis |
+| Accuracy | Measures the proportion of correctly classified samples |
+| Precision | Measures the proportion of correct predictions among samples predicted as a particular class |
+| Recall | Measures how effectively the model identifies samples belonging to a particular class |
+| F1-Score | Represents the harmonic mean of precision and recall |
+| Confusion Matrix | Shows correct and incorrect predictions for each class |
 
-Example:
+For multiclass classification, precision, recall, and F1-score can be calculated using macro, micro, or weighted averaging, depending on the evaluation objective.
 
-```text
-Accuracy  : XX%
-Precision : XX%
-Recall    : XX%
-F1-Score  : XX%
-```
+### 8.2 Evaluation Procedure
 
-The `XX%` values should be replaced with the actual results obtained from the trained model.
+1. Evaluate the trained model on a separate test dataset.
+2. Calculate the selected performance metrics from actual predictions.
+3. Examine the confusion matrix to identify common misclassifications.
+4. Compare class-wise performance to identify weaker categories.
+5. Evaluate the model on external datasets when suitable data are available.
 
----
+### 8.3 Reporting Results
 
-## 10. Limitations
+| Metric | Result |
+|---|---|
+| Accuracy | To be filled using actual results |
+| Precision | To be filled using actual results |
+| Recall | To be filled using actual results |
+| F1-Score | To be filled using actual results |
 
-The current system has several limitations:
+The table must be completed with measured results before the values are reported as experimental findings.
 
-- Performance depends on the quality and diversity of the dataset.
-- Class imbalance can affect classification performance.
-- XAI visualizations indicate model attention but do not automatically prove clinical causality.
-- Further validation is required before using the system in real-world clinical environments.
-- External datasets should be used to evaluate model generalization.
+## 9. Limitations
 
----
+The system has several limitations that should be considered when interpreting its predictions.
 
-## 11. Future Improvements
+- **Dataset Dependency:** Model performance depends on the quality, size, and diversity of the training dataset.
+- **Class Imbalance:** Unequal representation of severity categories may affect classification performance.
+- **Image Quality:** Poor illumination, blur, or other image acquisition issues may influence predictions.
+- **Model Interpretability:** XAI visualizations provide limited explanations and do not establish causal relationships.
+- **Generalization:** Performance on unseen populations or different imaging devices may differ from test results.
+- **Clinical Validation:** Further validation is necessary before considering real-world clinical use.
+- **Feature Analysis Limitations:** Blood vessel analysis and exudate detection are useful only to the extent that their implemented methods are reliable and validated.
 
-Possible improvements include:
+The system should be considered a research or screening-support tool, not a replacement for professional medical diagnosis.
 
-1. Training on larger and more diverse retinal datasets.
-2. Handling class imbalance using appropriate sampling or augmentation techniques.
-3. Improving blood vessel and exudate segmentation.
-4. Comparing multiple XAI techniques.
-5. Evaluating explanation consistency across different images.
-6. Testing the model on external datasets.
-7. Developing a web-based screening interface.
-8. Adding confidence-based warnings for uncertain predictions.
-9. Conducting expert evaluation of generated explanations.
+## 10. Future Improvements
 
----
+Several improvements could strengthen the system's reliability, usability, and interpretability.
 
-## 12. Conclusion
+1. **Expand the Dataset:** Train and evaluate using larger and more diverse retinal datasets.
+2. **Address Class Imbalance:** Investigate appropriate sampling, class weighting, or data augmentation techniques.
+3. **Improve Image Preprocessing:** Evaluate preprocessing methods that preserve clinically relevant retinal details.
+4. **Enhance Feature Analysis:** Validate and improve blood vessel analysis and exudate detection where these components are implemented.
+5. **Compare XAI Techniques:** Compare suitable explanation methods to understand their strengths and limitations.
+6. **Evaluate Explanation Consistency:** Examine whether explanations remain meaningful across similar images and model predictions.
+7. **Perform External Validation:** Test generalization on independent datasets from different sources.
+8. **Improve the User Interface:** Present predictions, explanations, and appropriate warnings in a clear interface.
+9. **Add Uncertainty Handling:** Investigate methods for flagging uncertain or low-quality predictions.
+10. **Seek Expert Feedback:** Evaluate the usefulness of model explanations with qualified domain experts.
 
-The proposed system combines **computer vision, EfficientNetV2-based deep learning, and Explainable AI** to create an interpretable diabetic retinopathy screening pipeline.
+Each improvement should be implemented and evaluated before being described as a completed project feature.
 
-Instead of providing only a severity prediction, the system aims to provide a visual explanation of the retinal regions that influenced the model.
+## 11. Conclusion
 
-This approach can improve model transparency and make the system easier to analyze during research and development.
+The Diabetic Retinopathy Screening System combines retinal image analysis, deep learning-based classification, and Explainable AI to support the interpretation of diabetic retinopathy severity predictions.
 
-**Important:** This system is intended as an AI-assisted screening/research tool and is not a replacement for professional medical diagnosis.
+The use of an XAI component aims to provide additional insight into the regions that influence model predictions, making the system easier to analyze during research and development.
+
+However, reliable performance depends on appropriate training data, consistent preprocessing, rigorous evaluation, and validation of generated explanations.
+
+The system should be treated as an AI-assisted research or screening-support tool. Its predictions and visual explanations do not replace professional medical assessment or clinical diagnosis.
