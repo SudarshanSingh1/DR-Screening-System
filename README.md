@@ -8,7 +8,7 @@
 
 <h3><strong>Explainable AI for Diabetic Retinopathy Screening in Rural India</strong></h3>
 
-<sub>Problem Statement: SIH26038 &nbsp;·&nbsp; Smart India Hackathon 2026</sub>
+<sub>Problem Statement: SIH26038 &nbsp;|&nbsp; Smart India Hackathon 2026</sub>
 
 <br />
 
