@@ -344,9 +344,28 @@ def _load_image(upload: UploadFile) -> np.ndarray:
     return np.array(img, dtype=np.uint8)
 
 
-def _run_eye(label: str, upload: UploadFile, override_class: int = None) -> dict:
+def _run_eye(label: str, upload: UploadFile, override_class: int = None, enforce_quality: bool = True) -> dict:
     """Helper that runs full inference on a single eye upload."""
     img_arr = _load_image(upload)
+
+    # 1. Quality Gate Check
+    try:
+        from quality_gate import evaluate_image_quality
+        quality_res = evaluate_image_quality(img_arr)
+    except Exception as q_err:
+        log.warning(f"Quality gate error: {q_err}")
+        quality_res = {"passed": True, "status": "UNKNOWN", "reason": f"Quality check bypass: {q_err}"}
+
+    if enforce_quality and not quality_res.get("passed", True):
+        log.warning(f"[{label}] Image failed quality check: {quality_res.get('reason')}")
+        return {
+            "success": False,
+            "error": "QUALITY_CHECK_FAILED",
+            "qualityGate": quality_res,
+            "action": "RECAPTURE_REQUIRED",
+            "detail": f"{label} quality check failed: {quality_res.get('reason')}",
+        }
+
     try:
         from evidence_generator import generate_quality_evidence, generate_vessel_evidence, generate_disc_fovea_evidence, generate_lesion_evidence
         
@@ -360,6 +379,7 @@ def _run_eye(label: str, upload: UploadFile, override_class: int = None) -> dict
         
         return {
             "success": True,
+            "qualityGate": quality_res,
             "prediction": {
                 "classIndex": result["classIndex"],
                 "label":      result["label"],
@@ -382,15 +402,27 @@ def _run_eye(label: str, upload: UploadFile, override_class: int = None) -> dict
         )
 
 
+@app.post("/quality-check")
+async def check_quality(file: UploadFile = File(...)):
+    """
+    Standalone endpoint to evaluate fundus image quality prior to screening.
+    Returns PASS/FAIL, sharpness, brightness, and dimensions.
+    """
+    img_arr = _load_image(file)
+    from quality_gate import evaluate_image_quality
+    return evaluate_image_quality(img_arr)
+
+
 @app.post("/analyze")
 async def analyze_bilateral(
     leftEye:  UploadFile = File(...),
     rightEye: UploadFile = File(...),
+    enforce_quality: bool = Form(True),
 ):
     """
     Bilateral screening endpoint.
     Accepts leftEye and rightEye as multipart form files.
-    Returns independent predictions for each eye.
+    Returns independent predictions for each eye with quality gate status.
     """
     if _provider is None or not _provider.is_ready():
         raise HTTPException(
@@ -398,8 +430,8 @@ async def analyze_bilateral(
             detail=f"{_startup_error.get('code')}: {_startup_error.get('message')}",
         )
 
-    left_result  = _run_eye("Left eye",  leftEye)
-    right_result = _run_eye("Right eye", rightEye)
+    left_result  = _run_eye("Left eye",  leftEye, enforce_quality=enforce_quality)
+    right_result = _run_eye("Right eye", rightEye, enforce_quality=enforce_quality)
 
     return {
         "leftEye":  left_result,
@@ -409,7 +441,11 @@ async def analyze_bilateral(
 
 # Keep legacy single-image endpoint for backward compatibility
 @app.post("/analyze/single")
-async def analyze_single(file: UploadFile = File(...), override_class: int = Form(None)):
+async def analyze_single(
+    file: UploadFile = File(...),
+    override_class: int = Form(None),
+    enforce_quality: bool = Form(True),
+):
     """
     Legacy single-image endpoint (backward compatibility).
     Returns the same response structure as a single eye.
@@ -420,10 +456,14 @@ async def analyze_single(file: UploadFile = File(...), override_class: int = For
             detail=f"{_startup_error.get('code')}: {_startup_error.get('message')}",
         )
 
-    result = _run_eye("Image", file, override_class)
+    result = _run_eye("Image", file, override_class, enforce_quality=enforce_quality)
+    if not result.get("success"):
+        return JSONResponse(status_code=422, content=result)
+
     # Flatten to match legacy response shape
     return {
         "success": True,
+        "qualityGate": result.get("qualityGate"),
         "prediction": result["prediction"],
         "probabilities":   result["probabilities"],
         "isReferable":     result["isReferable"],

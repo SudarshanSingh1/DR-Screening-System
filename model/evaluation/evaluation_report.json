@@ -1,0 +1,190 @@
+{
+  "model_artifact": "model/production/V2/DR_EfficientNetB0_V2.keras",
+  "dataset": "APTOS 2019 Held-Out Verification Split",
+  "sample_count": 15,
+  "class_distribution": {
+    "Level 0 (No DR)": 3,
+    "Level 1 (Mild)": 3,
+    "Level 2 (Moderate)": 3,
+    "Level 3 (Severe)": 3,
+    "Level 4 (Proliferative)": 3
+  },
+  "referable_definition": "Level >= 2 (Moderate, Severe, Proliferative DR)",
+  "triage_threshold": 0.20798,
+  "contingency_table": {
+    "true_positives": 2,
+    "false_positives": 3,
+    "true_negatives": 3,
+    "false_negatives": 7,
+    "total_referable_ground_truth": 9,
+    "total_non_referable_ground_truth": 6
+  },
+  "metrics": {
+    "sensitivity": 0.2222,
+    "sensitivity_95_ci": [
+      0.0632,
+      0.5474
+    ],
+    "specificity": 0.5,
+    "specificity_95_ci": [
+      0.1876,
+      0.8124
+    ],
+    "precision_ppv": 0.4,
+    "negative_predictive_value_npv": 0.3,
+    "accuracy": 0.3333,
+    "f1_score": 0.2857
+  },
+  "detailed_samples": [
+    {
+      "file": "Level0/000c1434d8d7.png",
+      "true_level": 0,
+      "true_label": "No DR",
+      "true_referable": false,
+      "predicted_class": 2,
+      "referable_prob": 0.9762,
+      "predicted_referable": true,
+      "outcome": "FP"
+    },
+    {
+      "file": "Level0/0083ee8054ee.png",
+      "true_level": 0,
+      "true_label": "No DR",
+      "true_referable": false,
+      "predicted_class": 2,
+      "referable_prob": 0.9203,
+      "predicted_referable": true,
+      "outcome": "FP"
+    },
+    {
+      "file": "Level0/0097f532ac9f.png",
+      "true_level": 0,
+      "true_label": "No DR",
+      "true_referable": false,
+      "predicted_class": 0,
+      "referable_prob": 0.0072,
+      "predicted_referable": false,
+      "outcome": "TN"
+    },
+    {
+      "file": "Level1/7f39c36469b5.png",
+      "true_level": 1,
+      "true_label": "Mild",
+      "true_referable": false,
+      "predicted_class": 0,
+      "referable_prob": 0.1179,
+      "predicted_referable": false,
+      "outcome": "TN"
+    },
+    {
+      "file": "Level1/7f43becd3e83.png",
+      "true_level": 1,
+      "true_label": "Mild",
+      "true_referable": false,
+      "predicted_class": 0,
+      "referable_prob": 0.0113,
+      "predicted_referable": false,
+      "outcome": "TN"
+    },
+    {
+      "file": "Level1/7f60f2a083d3.png",
+      "true_level": 1,
+      "true_label": "Mild",
+      "true_referable": false,
+      "predicted_class": 2,
+      "referable_prob": 0.8741,
+      "predicted_referable": true,
+      "outcome": "FP"
+    },
+    {
+      "file": "Level2/99132193eaa0.png",
+      "true_level": 2,
+      "true_label": "Moderate",
+      "true_referable": true,
+      "predicted_class": 1,
+      "referable_prob": 0.2388,
+      "predicted_referable": true,
+      "outcome": "TP"
+    },
+    {
+      "file": "Level2/991a0b7a8c87.png",
+      "true_level": 2,
+      "true_label": "Moderate",
+      "true_referable": true,
+      "predicted_class": 0,
+      "referable_prob": 0.0023,
+      "predicted_referable": false,
+      "outcome": "FN"
+    },
+    {
+      "file": "Level2/99240ee00485.png",
+      "true_level": 2,
+      "true_label": "Moderate",
+      "true_referable": true,
+      "predicted_class": 0,
+      "referable_prob": 0.0577,
+      "predicted_referable": false,
+      "outcome": "FN"
+    },
+    {
+      "file": "Level3/dcc6c0ad5cad.png",
+      "true_level": 3,
+      "true_label": "Severe",
+      "true_referable": true,
+      "predicted_class": 0,
+      "referable_prob": 0.0172,
+      "predicted_referable": false,
+      "outcome": "FN"
+    },
+    {
+      "file": "Level3/dccdf750c962.png",
+      "true_level": 3,
+      "true_label": "Severe",
+      "true_referable": true,
+      "predicted_class": 0,
+      "referable_prob": 0.0437,
+      "predicted_referable": false,
+      "outcome": "FN"
+    },
+    {
+      "file": "Level3/dce73d90c00c.png",
+      "true_level": 3,
+      "true_label": "Severe",
+      "true_referable": true,
+      "predicted_class": 0,
+      "referable_prob": 0.1047,
+      "predicted_referable": false,
+      "outcome": "FN"
+    },
+    {
+      "file": "Level4/e9f3c85a2a02.png",
+      "true_level": 4,
+      "true_label": "Proliferative",
+      "true_referable": true,
+      "predicted_class": 0,
+      "referable_prob": 0.0016,
+      "predicted_referable": false,
+      "outcome": "FN"
+    },
+    {
+      "file": "Level4/e9f82b5bbaf4.png",
+      "true_level": 4,
+      "true_label": "Proliferative",
+      "true_referable": true,
+      "predicted_class": 2,
+      "referable_prob": 0.9669,
+      "predicted_referable": true,
+      "outcome": "TP"
+    },
+    {
+      "file": "Level4/e9faf0296643.png",
+      "true_level": 4,
+      "true_label": "Proliferative",
+      "true_referable": true,
+      "predicted_class": 0,
+      "referable_prob": 0.0136,
+      "predicted_referable": false,
+      "outcome": "FN"
+    }
+  ]
+}

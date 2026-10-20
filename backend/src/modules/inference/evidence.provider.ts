@@ -29,7 +29,13 @@ export async function provideEvidence(filePath: string, fileName: string, overri
   const result = await analyzeImage(filePath, fileName, 'image/jpeg', overrideClass);
   
   if (!result || !result.success) {
-    throw new Error('Inference failed to return success');
+    if (result?.qualityGate && !result.qualityGate.passed) {
+      throw Object.assign(
+        new Error(`Image Quality Check Failed: ${result.qualityGate.reason}`),
+        { status: 422, code: 'QUALITY_CHECK_FAILED', qualityGate: result.qualityGate }
+      );
+    }
+    throw new Error(result?.detail || 'Inference failed to return success');
   }
 
   // The python service has been modified to return all 5 evidence assets as base64
@@ -44,5 +50,6 @@ export async function provideEvidence(filePath: string, fileName: string, overri
     discFoveaEvidence: result.discFoveaEvidence,
     lesionEvidence: result.lesionEvidence,
     gradCamEvidence: result.gradCam,
+    qualityGate: result.qualityGate,
   } as any;
 }
