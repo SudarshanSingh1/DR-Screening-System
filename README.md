@@ -337,22 +337,6 @@ The deployed production checkpoint (`DR_EfficientNetB0_V2.keras`) was evaluated 
 | **Overall Accuracy** | **33.3%** (5/15) | [15.2%, 58.3%] | High multi-class accuracy |
 | **Binary F1-Score** | **0.2857** | — | $\ge 0.88$ (Target) |
 
-```text
-Contingency Matrix (Referable DR threshold = Level 2+):
-                             Predicted Non-Referable     Predicted Referable
-Actual Non-Referable (0–1)           TN = 3                    FP = 3
-Actual Referable (2–4)               FN = 7                    TP = 2
-
-Visual Diagnostic Performance vs. Clinical Targets:
-Metric                    Score    Empirical Gauge             Clinical Target Standard
-────────────────────────────────────────────────────────────────────────────────────────
-Sensitivity (Recall)      22.2%    ████░░░░░░░░░░░░░░░░        ≥ 93.0% (Developmental)
-Specificity               50.0%    ██████████░░░░░░░░░░        ≥ 87.5% (Developmental)
-Precision (PPV)           40.0%    ████████░░░░░░░░░░░░        High positive yield
-Negative Pred Val (NPV)   30.0%    ██████░░░░░░░░░░░░░░        High rule-out safety
-Overall Accuracy          33.3%    ███████░░░░░░░░░░░░░        5-Class Challenge Set
-Binary F1-Score           0.2857   ██████░░░░░░░░░░░░░░        ≥ 0.8800 (Target)
-```
 
 ### Critical Findings & Clinical Implications:
 1. **False Negative Risk on Verification Cohort:** On this 15-sample challenge set, 7 of 9 referable cases fell below the decision boundary.
@@ -485,25 +469,10 @@ python3 model/evaluation/evaluate_referable_dr.py
 | **Doctor** | Doctor 2 | `doctor2@visionai.health` | `Vision@Doctor2#2026` |
 | **Patient** | Patient 1 | `patient1@visionai.health` | `Vision@Patient1#2026` |
 
----
-
-## 12. Limitations and Future Work
-
-1. **Multi-Stage Deep Learning Pipeline (In Development):**
-   - **Deep Image Quality Assessment (EfficientNet-B2):** Replacing deterministic Laplacian filters with a convolutional model trained on EyePACS-QA to classify focus, illumination, and media opacities (senile cataracts).
-   - **Retinal Vessel Segmentation (U-Net++):** Deep supervision network for microvascular caliber ratios and arteriolar-to-venular ratio (AVR) analysis.
-   - **Optic Disc & Fovea Localization (U-Net++ + Heatmap CNN):** Sub-pixel regression for landmark coordinates, standardizing retinal quadrants and foveal exudate proximity for Clinically Significant Macular Edema (CSME).
-   - **Lesion Semantic Segmentation (DeepLabV3+ ResNet-50):** Multi-class segmentation isolating microaneurysms, hemorrhages, and hard/soft exudates.
-   - **Multi-Task DR Severity Classification (ResNet-101):** Auxiliary heads predicting overall 5-level severity alongside focal lesion counts.
-2. **Confidence Calibration & Epistemic Uncertainty:**
-   - Post-hoc temperature scaling ($T$) to minimize Expected Calibration Error (ECE).
-   - Monte Carlo Dropout for epistemic uncertainty boundaries during clinical review.
-3. **Offline Store-and-Forward Edge Sync:**
-   - Enabling local IndexedDB / SQLite caching for intermittent connectivity in remote vision centres, synchronizing with central district hospitals when backhaul connectivity recovers.
 
 ---
 
-## 13. Research References
+## 12. Research References
 
 1. **Gulshan, V., et al.** (2016). *Development and Validation of a Deep Learning Algorithm for Detection of Diabetic Retinopathy in Retinal Fundus Photographs.* **JAMA**, 316(22), 2402–2410. [doi:10.1001/jama.2016.17216](https://doi.org/10.1001/jama.2016.17216)
 2. **Tan, M., & Le, Q. V.** (2019). *EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks.* **ICML 2019**, PMLR 97:6105–6114. [arXiv:1905.11946](https://arxiv.org/abs/1905.11946)
@@ -513,7 +482,7 @@ python3 model/evaluation/evaluate_referable_dr.py
 
 ---
 
-## 14. Prototype and Clinical Safety Disclaimer
+## 13. Prototype and Clinical Safety Disclaimer
 
 - **Non-Autonomous Research Prototype:** Vision AI is an experimental decision-support research prototype developed for Smart India Hackathon 2026 (SIH26038). It does not hold CDSCO (Central Drugs Standard Control Organisation) or US FDA medical device clearance and must not be used as an autonomous diagnostic authority.
 - **Mandatory Specialist Oversight:** Every screening result, severity grade, and referral recommendation requires confirmation and signature by a certified ophthalmologist.
