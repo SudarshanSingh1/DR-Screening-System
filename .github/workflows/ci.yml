@@ -1,0 +1,80 @@
+name: Vision AI CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-test:
+    name: Backend Node.js Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm --prefix backend ci
+
+      - name: Run backend unit tests
+        run: npm --prefix backend test
+
+  python-test:
+    name: Python Inference & Quality Gate Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: inference_service/requirements.txt
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r inference_service/requirements.txt
+          pip install httpx
+
+      - name: Run unit & security tests
+        env:
+          KERAS_HOME: /tmp/.keras
+          MPLCONFIGDIR: /tmp/matplotlib
+        run: |
+          python -m unittest discover -s tests/unit
+          python -m unittest discover -s tests/security
+          python -m unittest discover -s evaluation/tests
+
+  evaluation-benchmark:
+    name: Referable-DR Benchmark Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run evaluation script on held-out split
+        env:
+          KERAS_HOME: /tmp/.keras
+          MPLCONFIGDIR: /tmp/matplotlib
+        run: |
+          python evaluation/scripts/evaluate_referable_dr.py

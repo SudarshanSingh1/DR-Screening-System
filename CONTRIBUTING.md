@@ -18,12 +18,16 @@ Because this system operates in a healthcare decision-support context, we mainta
 ## Repository Architecture
 
 ```text
-├── frontend/             # React 19, Vite, TypeScript, Tailwind CSS
+├── frontend/             # React 18, Vite, TypeScript, Tailwind CSS
 ├── backend/              # Node.js 20, Express, TypeScript, Prisma, PostgreSQL
 ├── inference_service/    # Python 3.11, FastAPI, TensorFlow/Keras
 ├── model/                # Production model artifacts, configs, and reference weights
 ├── matlab/               # Research algorithms, Simulink models, and training workspace
-├── docs/                 # System architecture, inference, Grad-CAM, clinical workflow docs
+├── evaluation/           # Evaluation runners, verification split reports, and metric tests
+├── tests/                # Unified test suites (unit, integration, security, fixtures)
+├── scripts/              # Verification and automated test runner scripts
+├── deployment/           # Deployment guides and container configurations
+├── docs/                 # Architectural, research, clinical safety, and security docs
 └── docker-compose.yml    # Multi-service local orchestration
 ```
 
@@ -60,7 +64,14 @@ docker compose up --build
 
 Before submitting a pull request, verify that all automated checks pass locally.
 
-### Frontend
+### Unified Test Runner (Recommended)
+```bash
+bash scripts/run_all_tests.sh
+```
+
+### Individual Service Verification
+
+#### Frontend
 ```bash
 cd frontend
 npm ci
@@ -68,7 +79,7 @@ npm run build    # tsc -b && vite build
 npm run lint     # oxlint
 ```
 
-### Backend
+#### Backend
 ```bash
 cd backend
 npm ci
@@ -77,14 +88,20 @@ npm run build    # tsc
 npm test         # node --test dist/tests/**/*.test.js
 ```
 
-### Python Inference Service
+#### Python Unit & Integration Tests
 ```bash
-# In your Python virtual environment:
-python -m py_compile inference_service/*.py
-python -m unittest discover -s inference_service/tests
+python3 -m unittest discover -s tests/unit
+python3 -m unittest discover -s tests/integration
+python3 -m unittest discover -s tests/security
+python3 -m unittest discover -s evaluation/tests
 ```
 
-### Docker Compose
+#### Referable-DR Benchmark Evaluation
+```bash
+python3 evaluation/scripts/evaluate_referable_dr.py
+```
+
+#### Docker Compose
 ```bash
 docker compose config --quiet
 ```

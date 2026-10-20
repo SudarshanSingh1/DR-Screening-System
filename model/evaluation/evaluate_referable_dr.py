@@ -1,5 +1,5 @@
 """
-model/evaluation/evaluate_referable_dr.py — Honest Referable-DR Evaluation Script
+evaluation/scripts/evaluate_referable_dr.py — Honest Referable-DR Evaluation Script
 ================================================================================
 Reproducible evaluation script for the deployed Keras production model:
   model/production/V2/DR_EfficientNetB0_V2.keras
@@ -21,7 +21,7 @@ Thresholds:
   - Standard Baseline:    sum(p[2..4]) >= 0.50000
 
 Usage:
-  python3 model/evaluation/evaluate_referable_dr.py
+  python3 evaluation/scripts/evaluate_referable_dr.py
 """
 
 import os
@@ -39,8 +39,11 @@ os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 VERIFICATION_REPORT = REPO_ROOT / "model" / "production" / "V2" / "verification_report.json"
 MODEL_PATH = REPO_ROOT / "model" / "production" / "V2" / "DR_EfficientNetB0_V2.keras"
-OUTPUT_JSON = REPO_ROOT / "model" / "evaluation" / "evaluation_report.json"
-OUTPUT_MD = REPO_ROOT / "model" / "evaluation" / "evaluation_report.md"
+
+PRIMARY_JSON = REPO_ROOT / "evaluation" / "reports" / "evaluation_report.json"
+PRIMARY_MD = REPO_ROOT / "evaluation" / "reports" / "evaluation_report.md"
+LEGACY_JSON = REPO_ROOT / "model" / "evaluation" / "evaluation_report.json"
+LEGACY_MD = REPO_ROOT / "model" / "evaluation" / "evaluation_report.md"
 
 
 def wilson_score_interval(successes: int, total: int, z: float = 1.96) -> Tuple[float, float]:
@@ -75,7 +78,6 @@ def run_evaluation(threshold: float = 0.20798) -> Dict[str, Any]:
     y_pred_binary = []
 
     tp = fp = tn = fn = 0
-
     detailed_records = []
 
     for item in samples:
@@ -109,184 +111,161 @@ def run_evaluation(threshold: float = 0.20798) -> Dict[str, Any]:
             outcome = "FN"
 
         detailed_records.append({
-            "file": item.get("file"),
-            "true_level": true_level,
-            "true_label": ["No DR", "Mild", "Moderate", "Severe", "Proliferative"][true_level],
-            "true_referable": is_true_referable,
-            "predicted_class": pred_class,
-            "referable_prob": round(ref_prob, 4),
-            "predicted_referable": is_pred_referable,
+            "imageName": item.get("imageName"),
+            "trueLevel": true_level,
+            "isTrueReferable": is_true_referable,
+            "predictedClass": pred_class,
+            "referableProbability": round(ref_prob, 5),
+            "isPredictedReferable": is_pred_referable,
             "outcome": outcome
         })
 
-    positives = tp + fn  # Ground truth referable cases
-    negatives = tn + fp  # Ground truth non-referable cases
+    # Diagnostic Metrics
+    total_positives = tp + fn  # Actual referable
+    total_negatives = tn + fp  # Actual non-referable
 
-    sens = tp / positives if positives > 0 else 0.0
-    spec = tn / negatives if negatives > 0 else 0.0
-    ppv = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    sensitivity = tp / total_positives if total_positives > 0 else 0.0
+    specificity = tn / total_negatives if total_negatives > 0 else 0.0
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
     npv = tn / (tn + fn) if (tn + fn) > 0 else 0.0
     accuracy = (tp + tn) / total_samples if total_samples > 0 else 0.0
-    f1 = (2 * ppv * sens) / (ppv + sens) if (ppv + sens) > 0 else 0.0
+    f1 = 2 * (precision * sensitivity) / (precision + sensitivity) if (precision + sensitivity) > 0 else 0.0
 
-    sens_ci = wilson_score_interval(tp, positives)
-    spec_ci = wilson_score_interval(tn, negatives)
+    sens_ci = wilson_score_interval(tp, total_positives)
+    spec_ci = wilson_score_interval(tn, total_negatives)
+    prec_ci = wilson_score_interval(tp, tp + fp)
+    npv_ci = wilson_score_interval(tn, tn + fn)
+    acc_ci = wilson_score_interval(tp + tn, total_samples)
 
-    results = {
-        "model_artifact": "model/production/V2/DR_EfficientNetB0_V2.keras",
-        "dataset": "APTOS 2019 Held-Out Verification Split",
-        "sample_count": total_samples,
-        "class_distribution": {
-            "Level 0 (No DR)": y_true_levels.count(0),
-            "Level 1 (Mild)": y_true_levels.count(1),
-            "Level 2 (Moderate)": y_true_levels.count(2),
-            "Level 3 (Severe)": y_true_levels.count(3),
-            "Level 4 (Proliferative)": y_true_levels.count(4),
+    report = {
+        "metadata": {
+            "modelPath": str(MODEL_PATH.relative_to(REPO_ROOT)),
+            "dataset": "APTOS 2019 Held-Out Verification Split",
+            "sampleCount": total_samples,
+            "referableThreshold": threshold,
+            "referableDefinition": "ICDR Level >= 2 (Moderate, Severe, Proliferative DR)"
         },
-        "referable_definition": "Level >= 2 (Moderate, Severe, Proliferative DR)",
-        "triage_threshold": threshold,
-        "contingency_table": {
-            "true_positives": tp,
-            "false_positives": fp,
-            "true_negatives": tn,
-            "false_negatives": fn,
-            "total_referable_ground_truth": positives,
-            "total_non_referable_ground_truth": negatives,
+        "contingencyMatrix": {
+            "truePositives": tp,
+            "falsePositives": fp,
+            "trueNegatives": tn,
+            "falseNegatives": fn
         },
         "metrics": {
-            "sensitivity": round(sens, 4),
-            "sensitivity_95_ci": list(sens_ci),
-            "specificity": round(spec, 4),
-            "specificity_95_ci": list(spec_ci),
-            "precision_ppv": round(ppv, 4),
-            "negative_predictive_value_npv": round(npv, 4),
+            "sensitivity": round(sensitivity, 4),
+            "sensitivityCI95": sens_ci,
+            "specificity": round(specificity, 4),
+            "specificityCI95": spec_ci,
+            "precision": round(precision, 4),
+            "precisionCI95": prec_ci,
+            "negativePredictiveValue": round(npv, 4),
+            "negativePredictiveValueCI95": npv_ci,
             "accuracy": round(accuracy, 4),
-            "f1_score": round(f1, 4),
+            "accuracyCI95": acc_ci,
+            "f1Score": round(f1, 4)
         },
-        "detailed_samples": detailed_records,
+        "clinicalTargets": {
+            "sensitivityTarget": 0.930,
+            "specificityTarget": 0.875,
+            "status": "Target defined by SIH clinical specification; model evaluated as assistive triage."
+        },
+        "detailedSamples": detailed_records
     }
-
-    return results
-
-
-def print_report(results: Dict[str, Any]):
-    m = results["metrics"]
-    c = results["contingency_table"]
-    t = results["triage_threshold"]
-
-    print("=" * 72)
-    print(f"  VISION AI — REFERABLE DR EVALUATION REPORT (HONEST BENCHMARK)")
-    print("=" * 72)
-    print(f"Model:                {results['model_artifact']}")
-    print(f"Evaluation Dataset:   {results['dataset']}")
-    print(f"Sample Count:         {results['sample_count']} images (Stratified across Levels 0–4)")
-    print(f"Referable Definition: {results['referable_definition']}")
-    print(f"Referable Threshold:  P(Referable) >= {t:.5f}")
-    print("-" * 72)
-    print("  CONFUSION MATRIX")
-    print(f"                      Predicted Non-Ref    Predicted Referable")
-    print(f"  Actual Non-Ref (0-1):     TN = {c['true_negatives']:<3}              FP = {c['false_positives']:<3}")
-    print(f"  Actual Referable (2-4):   FN = {c['false_negatives']:<3}              TP = {c['true_positives']:<3}")
-    print("-" * 72)
-    print("  DIAGNOSTIC PERFORMANCE METRICS")
-    print(f"  Sensitivity (Recall):     {m['sensitivity']*100:.1f}%  (95% CI: [{m['sensitivity_95_ci'][0]*100:.1f}%, {m['sensitivity_95_ci'][1]*100:.1f}%])")
-    print(f"  Specificity:              {m['specificity']*100:.1f}%  (95% CI: [{m['specificity_95_ci'][0]*100:.1f}%, {m['specificity_95_ci'][1]*100:.1f}%])")
-    print(f"  Precision (PPV):          {m['precision_ppv']*100:.1f}%")
-    print(f"  Negative Pred Val (NPV):  {m['negative_predictive_value_npv']*100:.1f}%")
-    print(f"  Accuracy:                 {m['accuracy']*100:.1f}%")
-    print(f"  F1-Score:                 {m['f1_score']:.4f}")
-    print("=" * 72)
-    print("CLINICAL NOTE:")
-    print("On this small 15-sample verification split, the model demonstrates")
-    print(f"a sensitivity of {m['sensitivity']*100:.1f}% ({c['true_positives']}/{c['total_referable_ground_truth']}) and specificity of {m['specificity']*100:.1f}% ({c['true_negatives']}/{c['total_non_referable_ground_truth']}).")
-    print("This empirically highlights the risk of False Negatives and confirms that")
-    print("the AI model serves as an assistive triage aid with mandatory doctor review,")
-    print("NOT as an autonomous diagnostic device. Target sensitivity (>=93%) remains")
-    print("a clinical development target requiring broader multi-center retraining.")
-    print("=" * 72)
+    return report
 
 
-def generate_markdown(results: Dict[str, Any]) -> str:
-    m = results["metrics"]
-    c = results["contingency_table"]
-    t = results["triage_threshold"]
+def generate_markdown_report(rep: Dict[str, Any]) -> str:
+    m = rep["metrics"]
+    cm = rep["contingencyMatrix"]
+    meta = rep["metadata"]
 
     md = f"""# Referable Diabetic Retinopathy Evaluation Report
 
-**Evaluation Date:** Verified Benchmark Assessment  
-**Model Evaluated:** `{results['model_artifact']}`  
-**Dataset:** {results['dataset']} ($N = {results['sample_count']}$)  
-**Referable DR Definition:** Level $\\ge 2$ (Moderate, Severe, Proliferative DR)  
-**Triage Threshold:** $\\sum_{{c=2}}^4 p_c \\ge {t}$  
+**Model:** `{meta['modelPath']}`  
+**Evaluation Split:** {meta['dataset']} ($N = {meta['sampleCount']}$)  
+**Referable Decision Rule:** $P(\\text{{Referable}}) = \\sum_{{c=2}}^4 p_c \\ge {meta['referableThreshold']}$  
+**Standard:** ICDR Level $\\ge 2$ indicates Referable DR  
 
 ---
 
-## 1. Summary of Evaluated Metrics
+## 1. Contingency Matrix (Referable DR)
 
-| Diagnostic Metric | Evaluated Result | 95% Wilson Score Confidence Interval | Clinical Target Standard |
+| | Predicted Non-Referable | Predicted Referable | Total Actual |
 |---|:---:|:---:|:---:|
-| **Sensitivity (Recall)** | **{m['sensitivity']*100:.1f}%** ({c['true_positives']}/{c['total_referable_ground_truth']}) | [{m['sensitivity_95_ci'][0]*100:.1f}%, {m['sensitivity_95_ci'][1]*100:.1f}%] | $\\ge 93.0\\%$ (Target) |
-| **Specificity** | **{m['specificity']*100:.1f}%** ({c['true_negatives']}/{c['total_non_referable_ground_truth']}) | [{m['specificity_95_ci'][0]*100:.1f}%, {m['specificity_95_ci'][1]*100:.1f}%] | $\\ge 87.5\\%$ (Target) |
-| **Positive Predictive Value (Precision)** | **{m['precision_ppv']*100:.1f}%** ({c['true_positives']}/{c['true_positives'] + c['false_positives']}) | — | High positive yield |
-| **Negative Predictive Value (NPV)** | **{m['negative_predictive_value_npv']*100:.1f}%** ({c['true_negatives']}/{c['true_negatives'] + c['false_negatives']}) | — | High rule-out safety |
-| **Overall Accuracy** | **{m['accuracy']*100:.1f}%** | — | — |
-| **Binary F1-Score** | **{m['f1_score']:.4f}** | — | $\\ge 0.88$ (Target) |
+| **Actual Non-Referable (Levels 0–1)** | **TN = {cm['trueNegatives']}** | **FP = {cm['falsePositives']}** | {cm['trueNegatives'] + cm['falsePositives']} |
+| **Actual Referable (Levels 2–4)** | **FN = {cm['falseNegatives']}** | **TP = {cm['truePositives']}** | {cm['truePositives'] + cm['falseNegatives']} |
+| **Total Predicted** | {cm['trueNegatives'] + cm['falseNegatives']} | {cm['truePositives'] + cm['falsePositives']} | {meta['sampleCount']} |
 
 ---
 
-## 2. Confusion Matrix
+## 2. Diagnostic Performance Metrics
 
-```text
-                     Predicted Non-Referable    Predicted Referable
-Actual Non-Referable          TN = {c['true_negatives']}                    FP = {c['false_positives']}
-Actual Referable (2+)         FN = {c['false_negatives']}                    TP = {c['true_positives']}
-```
+| Metric | Result | 95% Wilson Score CI | Clinical Target Standard |
+|---|:---:|:---:|:---:|
+| **Sensitivity (Recall)** | **{m['sensitivity']*100:.1f}%** ({cm['truePositives']}/{cm['truePositives']+cm['falseNegatives']}) | [{m['sensitivityCI95'][0]*100:.1f}%, {m['sensitivityCI95'][1]*100:.1f}%] | $\\ge 93.0\\%$ (Target) |
+| **Specificity** | **{m['specificity']*100:.1f}%** ({cm['trueNegatives']}/{cm['trueNegatives']+cm['falsePositives']}) | [{m['specificityCI95'][0]*100:.1f}%, {m['specificityCI95'][1]*100:.1f}%] | $\\ge 87.5\\%$ (Target) |
+| **Precision (PPV)** | **{m['precision']*100:.1f}%** ({cm['truePositives']}/{cm['truePositives']+cm['falsePositives']}) | [{m['precisionCI95'][0]*100:.1f}%, {m['precisionCI95'][1]*100:.1f}%] | High Positive Yield |
+| **Negative Predictive Value (NPV)** | **{m['negativePredictiveValue']*100:.1f}%** ({cm['trueNegatives']}/{cm['trueNegatives']+cm['falseNegatives']}) | [{m['negativePredictiveValueCI95'][0]*100:.1f}%, {m['negativePredictiveValueCI95'][1]*100:.1f}%] | High Rule-Out Safety |
+| **Overall Accuracy** | **{m['accuracy']*100:.1f}%** ({cm['truePositives']+cm['trueNegatives']}/{meta['sampleCount']}) | [{m['accuracyCI95'][0]*100:.1f}%, {m['accuracyCI95'][1]*100:.1f}%] | High Diagnostic Accuracy |
+| **Binary F1-Score** | **{m['f1Score']:.4f}** | — | $\\ge 0.88$ (Target) |
 
 ---
 
-## 3. Sample-by-Sample Breakdown
+## 3. Clinical Governance Rationale
 
-| File ID | True Grade | True Status | Model Pred | Referable Score | Pred Status | Result |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-"""
-    for s in results["detailed_samples"]:
-        md += f"| `{s['file']}` | {s['true_label']} ({s['true_level']}) | {'Referable' if s['true_referable'] else 'Non-Referable'} | Level {s['predicted_class']} | {s['referable_prob']:.4f} | {'Referable' if s['predicted_referable'] else 'Non-Referable'} | **{s['outcome']}** |\n"
-
-    md += """
----
-
-## 4. Methodological Transparency & Limitations
-
-1. **Sample Cohort:** Evaluated on the 15 held-out verification fundus photographs from the APTOS development split.
-2. **False Negative Risk:** The empirical evaluation reveals that several high-grade cases (Levels 3 and 4) were predicted as Level 0 by the fine-tuned checkpoint on this small sample, yielding a sensitivity of 22.2% on this split.
-3. **No Metric Fabrication:** Unlike academic targets ($93\\%$ sensitivity), these empirical metrics reflect the actual output of `DR_EfficientNetB0_V2.keras`.
-4. **Clinical Governance:** This objective finding proves the necessity of the **Doctor-in-the-Loop** model: AI predictions must serve strictly as assistive triage guidance, and every case must receive certified ophthalmologist review.
+1. **Under-Prediction on Verification Set:** On this 15-sample verification cohort, the deployed fine-tuned model yielded 7 False Negatives (actual referable cases under-called by model tail probabilities).
+2. **Mandatory Doctor Sign-Off:** This empirical finding confirms why **Vision AI strictly enforces a Doctor-in-the-Loop policy**. AI outputs are preliminary triage aids; certified ophthalmologists retain sole diagnostic authority.
+3. **Developmental Target Notice:** The $\\ge 93\\%$ sensitivity requirement remains an engineering target requiring broader multi-center retraining across diverse Indian camera types.
 """
     return md
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate referable DR on deployed model.")
-    parser.add_argument("--threshold", type=float, default=0.20798, help="Referable DR threshold (default: 0.20798)")
-    parser.add_argument("--json", action="store_true", help="Output JSON only")
+    parser = argparse.ArgumentParser(description="Evaluate referable DR on held-out verification split.")
+    parser.add_argument("--threshold", type=float, default=0.20798, help="Referable DR classification threshold.")
     args = parser.parse_args()
 
-    results = run_evaluation(threshold=args.threshold)
+    rep = run_evaluation(threshold=args.threshold)
+    md_content = generate_markdown_report(rep)
 
-    OUTPUT_JSON.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT_JSON, "w") as f:
-        json.dump(results, f, indent=2)
+    PRIMARY_JSON.parent.mkdir(parents=True, exist_ok=True)
+    with open(PRIMARY_JSON, "w") as f:
+        json.dump(rep, f, indent=2)
 
-    md_content = generate_markdown(results)
-    with open(OUTPUT_MD, "w") as f:
+    with open(PRIMARY_MD, "w") as f:
         f.write(md_content)
 
-    if args.json:
-        print(json.dumps(results, indent=2))
-    else:
-        print_report(results)
-        print(f"\nSaved JSON report to: {OUTPUT_JSON}")
-        print(f"Saved Markdown report to: {OUTPUT_MD}")
+    # Sync to legacy paths for backward compatibility
+    LEGACY_JSON.parent.mkdir(parents=True, exist_ok=True)
+    with open(LEGACY_JSON, "w") as f:
+        json.dump(rep, f, indent=2)
+    with open(LEGACY_MD, "w") as f:
+        f.write(md_content)
+
+    print("=" * 72)
+    print("  VISION AI — REFERABLE DR EVALUATION REPORT (HONEST BENCHMARK)")
+    print("=" * 72)
+    print(f"Model:                {rep['metadata']['modelPath']}")
+    print(f"Evaluation Dataset:   {rep['metadata']['dataset']}")
+    print(f"Sample Count:         {rep['metadata']['sampleCount']} images (Stratified across Levels 0–4)")
+    print(f"Referable Definition: {rep['metadata']['referableDefinition']}")
+    print(f"Referable Threshold:  P(Referable) >= {rep['metadata']['referableThreshold']}")
+    print("-" * 72)
+    print("  CONFUSION MATRIX")
+    cm = rep['contingencyMatrix']
+    print(f"                      Predicted Non-Ref    Predicted Referable")
+    print(f"  Actual Non-Ref (0-1):     TN = {cm['trueNegatives']}                FP = {cm['falsePositives']}  ")
+    print(f"  Actual Referable (2-4):   FN = {cm['falseNegatives']}                TP = {cm['truePositives']}  ")
+    print("-" * 72)
+    print("  DIAGNOSTIC PERFORMANCE METRICS")
+    m = rep['metrics']
+    print(f"  Sensitivity (Recall):     {m['sensitivity']*100:.1f}%  (95% CI: [{m['sensitivityCI95'][0]*100:.1f}%, {m['sensitivityCI95'][1]*100:.1f}%])")
+    print(f"  Specificity:              {m['specificity']*100:.1f}%  (95% CI: [{m['specificityCI95'][0]*100:.1f}%, {m['specificityCI95'][1]*100:.1f}%])")
+    print(f"  Precision (PPV):          {m['precision']*100:.1f}%")
+    print(f"  Negative Pred Val (NPV):  {m['negativePredictiveValue']*100:.1f}%")
+    print(f"  Accuracy:                 {m['accuracy']*100:.1f}%")
+    print(f"  F1-Score:                 {m['f1Score']:.4f}")
+    print("=" * 72)
 
 
 if __name__ == "__main__":

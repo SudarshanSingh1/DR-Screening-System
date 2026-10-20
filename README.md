@@ -89,7 +89,7 @@ The platform combines an on-site deterministic **Image Quality Gate**, an **Effi
 
 ## 3. Main Screening Architecture
 
-The core screening workflow processes bilateral fundus images through independent parallel quality gates and inference pipelines before merging into the specialist triage queue:
+The core screening workflow processes bilateral fundus images through independent parallel quality gates and inference pipelines before merging into the specialist triage queue. For complete architectural specifications, see [Deployed System Architecture](docs/architecture/deployed-system.md).
 
 ```mermaid
 flowchart TD
@@ -173,7 +173,7 @@ flowchart TD
 
 ## 4. Software Architecture
 
-Vision AI is structured as a multi-tier decoupled system deployed via Docker Compose. The diagram below illustrates the exact runtime services, authentication guards, storage tiers, and interactive clinical workflows:
+Vision AI is structured as a multi-tier decoupled system deployed via Docker Compose. The diagram below illustrates the exact runtime services, authentication guards, storage tiers, and interactive clinical workflows. For deployment configurations and container networking, see [Deployment Architecture](docs/architecture/deployment.md).
 
 ```mermaid
 flowchart TD
@@ -236,7 +236,7 @@ flowchart TD
 
 ## 5. End-to-End Patient Workflow
 
-The sequential data-flow diagram below traces patient progression through the nine operational steps while distinguishing the underlying clinical data artifacts:
+The sequential data-flow diagram below traces patient progression through the nine operational steps while distinguishing the underlying clinical data artifacts. For data schema and lifecycle rules, see [Data Flow Architecture](docs/architecture/data-flow.md).
 
 ```mermaid
 flowchart LR
@@ -295,7 +295,7 @@ flowchart LR
 
 ## 6. AI Model and Implementation Status
 
-The table below provides a verified inventory of all technical components in the repository, distinguishing deployed implementations from planned research components:
+The table below provides a verified inventory of all technical components in the repository, distinguishing deployed implementations from planned research components. For details on the six-stage research roadmap, see [Six-Model Research Pipeline](docs/architecture/ai-pipeline.md).
 
 | Component | Current Status | Evidence in Codebase |
 |---|:---:|---|
@@ -307,8 +307,8 @@ The table below provides a verified inventory of all technical components in the
 | **Optic disc/fovea localization** | **Planned** *(Heuristic preview deployed)* | Heatmap CNN planned; multi-scale Gaussian bright/dark landmark heuristic in `evidence_generator.py` for UI preview only. |
 | **Lesion segmentation** | **Planned** *(Heuristic preview deployed)* | DeepLabV3+ (ResNet-50) planned; high-pass edge colorization filter in `evidence_generator.py` for UI preview only. |
 | **Confidence calibration** | **Planned** | Raw softmax output with low-confidence flag ($\max(p) < 0.50$); post-hoc temperature scaling and Bayesian MC-Dropout planned. |
-| **MATLAB–Keras parity** | **Not Run (Environment Constraint)** | Parity test protocol and layer mappings documented in `model/evaluation/matlab_keras_parity_report.md`; MATLAB runtime unavailable in current container environment. |
-| **Cross-dataset evaluation** | **Not Run (Single Split Evaluated)** | Empirical evaluation completed on 15-sample APTOS verification split (`model/evaluation/evaluation_report.md`); multi-center evaluation across EyePACS, Messidor-2, IDRiD, DRIVE planned. |
+| **MATLAB–Keras parity** | **Not Run (Environment Constraint)** | Parity test protocol and layer mappings documented in [`docs/research/matlab-keras-parity.md`](docs/research/matlab-keras-parity.md); MATLAB runtime unavailable in current container environment. |
+| **Cross-dataset evaluation** | **Not Run (Single Split Evaluated)** | Empirical evaluation completed on 15-sample APTOS verification split ([`evaluation/reports/evaluation_report.md`](evaluation/reports/evaluation_report.md)); multi-center evaluation across EyePACS, Messidor-2, IDRiD, DRIVE planned. |
 
 ---
 
@@ -326,7 +326,7 @@ The table below provides a verified inventory of all technical components in the
 
 ### Empirical Referable-DR Performance ($N=15$ Verification Split)
 
-The deployed production checkpoint (`DR_EfficientNetB0_V2.keras`) was evaluated on the 15-sample verification benchmark split recorded in `model/production/V2/verification_report.json` using the reproducible script [`model/evaluation/evaluate_referable_dr.py`](file:///Users/sudarshankumar/DR-Screening-System/model/evaluation/evaluate_referable_dr.py):
+The deployed production checkpoint (`DR_EfficientNetB0_V2.keras`) was evaluated on the 15-sample verification benchmark split recorded in `model/production/V2/verification_report.json` using the reproducible script [`evaluation/scripts/evaluate_referable_dr.py`](evaluation/scripts/evaluate_referable_dr.py). For protocol details and metric derivations, see [Evaluation Protocol](docs/research/evaluation-protocol.md).
 
 | Metric | Evaluated Result ($N=15$) | 95% Wilson Score Confidence Interval | Clinical Target Standard |
 |---|:---:|:---:|:---:|
@@ -419,15 +419,18 @@ docker compose up --build
 
 ### 4. Test Verification Suite
 
+For testing guidelines across unit, integration, and security tiers, see [Testing Guide](tests/README.md).
+
 ```bash
-# Backend unit tests
+# Unified test runner (executes all test suites & evaluation benchmark)
+bash scripts/run_all_tests.sh
+
+# Or run suites individually:
 npm --prefix backend test
-
-# Python inference & quality gate unit tests (11 passing tests)
-python3 -m unittest discover -s inference_service/tests
-
-# Reproducible referable-DR evaluation
-python3 model/evaluation/evaluate_referable_dr.py
+python3 -m unittest discover -s tests/unit
+python3 -m unittest discover -s tests/integration
+python3 -m unittest discover -s tests/security
+python3 evaluation/scripts/evaluate_referable_dr.py
 ```
 
 ---
@@ -436,7 +439,7 @@ python3 model/evaluation/evaluate_referable_dr.py
 
 ### Multi-Tier System Topology
 <div align="center">
-<img src="frontend/src/assets/system%20design.jpeg" alt="System Design" width="85%" style="border-radius: 8px; border: 1px solid #333;" />
+<img src="docs/images/system design.jpeg" alt="System Design" width="85%" style="border-radius: 8px; border: 1px solid #333;" />
 <br /><sub>Multi-tier production architecture: React UI, Express Gateway, PostgreSQL (Prisma), and FastAPI inference microservice.</sub>
 </div>
 
@@ -444,7 +447,7 @@ python3 model/evaluation/evaluate_referable_dr.py
 
 ### Staff Screening & Intake Workflow
 <div align="center">
-<img src="frontend/src/assets/workflow-diagram.png" alt="Workflow Diagram" width="85%" style="border-radius: 8px; border: 1px solid #333;" />
+<img src="docs/images/workflow-diagram.png" alt="Workflow Diagram" width="85%" style="border-radius: 8px; border: 1px solid #333;" />
 <br /><sub>Field screening workflow: patient registration, bilateral camera acquisition, automated quality checks, and doctor referral.</sub>
 </div>
 
@@ -452,8 +455,8 @@ python3 model/evaluation/evaluate_referable_dr.py
 
 ### Simulink District Healthcare Simulation
 <div align="center">
-<img src="frontend/src/assets/simulation-2.jpeg" width="46%" style="border-radius: 8px; margin-right: 8px; border: 1px solid #333;" />
-<img src="frontend/src/assets/Throughput%20Metrics.jpeg" width="46%" style="border-radius: 8px; border: 1px solid #333;" />
+<img src="docs/images/simulation-2.jpeg" width="46%" style="border-radius: 8px; margin-right: 8px; border: 1px solid #333;" />
+<img src="docs/images/Throughput Metrics.jpeg" width="46%" style="border-radius: 8px; border: 1px solid #333;" />
 <br /><sub>Discrete-event models in Simulink evaluating patient wait times, doctor queue latencies, and clinic throughput bottlenecks.</sub>
 </div>
 
@@ -469,10 +472,27 @@ python3 model/evaluation/evaluate_referable_dr.py
 | **Doctor** | Doctor 2 | `doctor2@visionai.health` | `Vision@Doctor2#2026` |
 | **Patient** | Patient 1 | `patient1@visionai.health` | `Vision@Patient1#2026` |
 
+---
+
+## 12. Limitations and Future Work
+
+For a comprehensive boundary disclosure, see [Clinical & Technical Limitations](docs/limitations.md).
+
+1. **Multi-Stage Deep Learning Pipeline (In Development):**
+   - **Deep Image Quality Assessment (EfficientNet-B2):** Replacing deterministic Laplacian filters with a convolutional model trained on EyePACS-QA to classify focus, illumination, and media opacities (senile cataracts).
+   - **Retinal Vessel Segmentation (U-Net++):** Deep supervision network for microvascular caliber ratios and arteriolar-to-venular ratio (AVR) analysis.
+   - **Optic Disc & Fovea Localization (U-Net++ + Heatmap CNN):** Sub-pixel regression for landmark coordinates, standardizing retinal quadrants and foveal exudate proximity for Clinically Significant Macular Edema (CSME).
+   - **Lesion Semantic Segmentation (DeepLabV3+ ResNet-50):** Multi-class segmentation isolating microaneurysms, hemorrhages, and hard/soft exudates.
+   - **Multi-Task DR Severity Classification (ResNet-101):** Auxiliary heads predicting overall 5-level severity alongside focal lesion counts.
+2. **Confidence Calibration & Epistemic Uncertainty:**
+   - Post-hoc temperature scaling ($T$) to minimize Expected Calibration Error (ECE).
+   - Monte Carlo Dropout for epistemic uncertainty boundaries during clinical review.
+3. **Offline Store-and-Forward Edge Sync:**
+   - Enabling local IndexedDB / SQLite caching for intermittent connectivity in remote vision centres, synchronizing with central district hospitals when backhaul connectivity recovers.
 
 ---
 
-## 12. Research References
+## 13. Research References
 
 1. **Gulshan, V., et al.** (2016). *Development and Validation of a Deep Learning Algorithm for Detection of Diabetic Retinopathy in Retinal Fundus Photographs.* **JAMA**, 316(22), 2402–2410. [doi:10.1001/jama.2016.17216](https://doi.org/10.1001/jama.2016.17216)
 2. **Tan, M., & Le, Q. V.** (2019). *EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks.* **ICML 2019**, PMLR 97:6105–6114. [arXiv:1905.11946](https://arxiv.org/abs/1905.11946)
@@ -482,11 +502,11 @@ python3 model/evaluation/evaluate_referable_dr.py
 
 ---
 
-## 13. Prototype and Clinical Safety Disclaimer
+## 14. Prototype and Clinical Safety Disclaimer
 
-- **Non-Autonomous Research Prototype:** Vision AI is an experimental decision-support research prototype developed for Smart India Hackathon 2026 (SIH26038). It does not hold CDSCO (Central Drugs Standard Control Organisation) or US FDA medical device clearance and must not be used as an autonomous diagnostic authority.
+- **Non-Autonomous Research Prototype:** Vision AI is an experimental decision-support research prototype developed for Smart India Hackathon 2026 (SIH26038). It does not hold CDSCO (Central Drugs Standard Control Organisation) or US FDA medical device clearance and must not be used as an autonomous diagnostic authority. For governance details, see [Clinical Safety Protocol](docs/clinical-safety.md).
 - **Mandatory Specialist Oversight:** Every screening result, severity grade, and referral recommendation requires confirmation and signature by a certified ophthalmologist.
-- **Data Privacy & Aadhaar Compliance:** In strict adherence to UIDAI regulations and India's Digital Personal Data Protection (DPDP) Act 2023, Vision AI **never stores raw 12-digit Aadhaar UID numbers or biometric information**. Only opaque system-generated patient identifiers (`patientId`) and masked display references (`XXXX XXXX 1234`) are retained on clinical reports.
+- **Data Privacy & Aadhaar Compliance:** In strict adherence to UIDAI regulations and India's Digital Personal Data Protection (DPDP) Act 2023, Vision AI **never stores raw 12-digit Aadhaar UID numbers or biometric information**. Only opaque system-generated patient identifiers (`patientId`) and masked display references (`XXXX XXXX 1234`) are retained on clinical reports. For security controls, see [Privacy & Security Architecture](docs/privacy-security.md).
 
 <br />
 
@@ -535,6 +555,6 @@ python3 model/evaluation/evaluate_referable_dr.py
 
 Built for Smart India Hackathon 2026 (SIH26038)
 <br /><br />
-<img src="frontend/src/assets/MakeInIndia.jpeg" width="120" alt="Make in India" />
+<img src="docs/images/MakeInIndia.jpeg" width="120" alt="Make in India" />
 
 </div>

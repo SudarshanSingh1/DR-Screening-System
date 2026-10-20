@@ -1,41 +1,36 @@
-# Security Policy
+# Security Policy — Vision AI
 
-We take the security of this project seriously and appreciate the efforts of security researchers and community members who help us identify and address potential vulnerabilities.
+**Project:** Vision AI — SIH26038 | Smart India Hackathon 2026  
+**Document Status:** Medical Device Security Policy  
 
-## Supported Versions
+We take the security of medical decision-support software and patient health information seriously. We appreciate the efforts of security researchers, clinicians, and community members who help us identify and address vulnerabilities.
 
-Security updates are provided for the following versions:
+---
 
-| Version | Supported |
-| ------- | --------- |
-| 5.1.x   | Yes       |
-| 5.0.x   | No        |
-| 4.0.x   | Yes       |
-| < 4.0   | No        |
+## 1. Supported Versions
 
-**Note:** Only the versions explicitly marked as supported are eligible for security updates. Users are encouraged to upgrade to a supported version to benefit from available security fixes and improvements.
+| Version | Status | Notes |
+|---|---|---|
+| **Vision AI v2.x** | **Supported** | Active production pipeline (`DR_EfficientNetB0_V2.keras`, FastAPI, Node/Express Gateway) |
+| **Vision AI v1.x** | Deprecated | Legacy prototype; upgrade to v2.x recommended |
 
-## Reporting a Vulnerability
+---
 
-If you discover a potential security vulnerability, please report it responsibly so that we can investigate and address it promptly.
+## 2. Reporting a Vulnerability
 
-**How to report:**
-- **Preferred method:** Contact the project maintainers privately through GitHub or use the security reporting feature available in the repository, if enabled.
-- **Include details:** Describe the vulnerability, the steps required to reproduce it, its potential impact, and any relevant proof-of-concept information.
-- **Avoid public disclosure:** Please do not disclose vulnerabilities publicly through GitHub Issues or other public channels until the maintainers have had a reasonable opportunity to investigate and address the issue.
+If you discover a security vulnerability or potential privacy leak (e.g. exposure of unmasked patient identifiers, authentication bypass, or model tampering):
 
-### What to Expect
+- **Private Reporting:** Please do **not** open a public GitHub issue. Email the team lead privately at `security@visionai.health` or contact the maintainers via GitHub's private vulnerability reporting channel.
+- **Report Details:** Please provide:
+  1. Description of the vulnerability and attack vector.
+  2. Steps to reproduce or proof-of-concept payload.
+  3. Assessment of potential impact on patient data privacy or clinical decision integrity.
+- **Response Timeline:** We commit to acknowledging reports within **48 hours** and providing an initial severity assessment within **5 business days**.
 
-- **Acknowledgment:** We aim to acknowledge your report within **5 business days**.
-- **Initial assessment:** We will review the report, assess its severity, and determine whether it represents a valid security vulnerability.
-- **Status updates:** We aim to provide updates on the investigation and remediation progress as appropriate.
-- **Resolution:** If the vulnerability is accepted, we will work to develop and release an appropriate fix. The timeline will depend on the severity and complexity of the issue.
-- **Declined reports:** If a report is determined not to be a vulnerability or falls outside the scope of this project, we will explain the decision where possible.
+---
 
-### Responsible Disclosure
+## 3. Medical Data Security & Incident Protocol
 
-We appreciate responsible disclosure and ask reporters to act in good faith, avoid accessing or modifying data without authorization, and refrain from actions that could disrupt the project's services or compromise other users.
-
-We value the contributions of security researchers and community members who help keep this project safe and reliable.
-
-Thank you for helping us improve the security of this project.
+- **Zero-Tolerance for PHI Exposure:** Vision AI does not store raw 12-digit Aadhaar UID numbers or biometric templates. Any finding indicating raw identification leakage is treated as a P0 Critical vulnerability.
+- **Model Weight Tamper-Resistance:** Model weights must match documented SHA-256 hashes. Unauthorized weight substitution is treated as a critical clinical safety threat.
+- **Responsible Disclosure:** We ask researchers to give the maintainers reasonable time to remediate issues before public disclosure.

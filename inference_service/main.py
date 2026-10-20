@@ -41,8 +41,14 @@ log = logging.getLogger("inference")
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 BASE_DIR    = Path(__file__).resolve().parent
+REPO_ROOT   = BASE_DIR.parent
 CONFIG_PATH = BASE_DIR / "model" / "config" / "model_config.json"
+if not CONFIG_PATH.exists() and (REPO_ROOT / "model" / "config" / "model_config.json").exists():
+    CONFIG_PATH = REPO_ROOT / "model" / "config" / "model_config.json"
+
 KERAS_PATH  = BASE_DIR / "model" / "production" / "V2" / "DR_EfficientNetB0_V2.keras"
+if not KERAS_PATH.exists() and (REPO_ROOT / "model" / "production" / "V2" / "DR_EfficientNetB0_V2.keras").exists():
+    KERAS_PATH  = REPO_ROOT / "model" / "production" / "V2" / "DR_EfficientNetB0_V2.keras"
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 ACTIVE_PROVIDER = os.environ.get("ACTIVE_PROVIDER", "python_v2")

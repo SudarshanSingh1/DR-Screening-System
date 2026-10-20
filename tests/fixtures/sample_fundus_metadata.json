@@ -1,0 +1,33 @@
+{
+  "testPatient": {
+    "patientId": "pat_test_001",
+    "name": "Test Patient",
+    "age": 52,
+    "gender": "Female",
+    "aadhaarReference": "XXXX XXXX 1234",
+    "diabetesType": "Type 2",
+    "diagnosisYear": 2018
+  },
+  "mockScreening": {
+    "screeningId": "scr_test_001",
+    "status": "COMPLETED",
+    "leftEye": {
+      "filename": "left_eye_sample.png",
+      "qualityGate": "PASS",
+      "sharpness": 28.4,
+      "predictedGrade": 1,
+      "predictedClass": "Mild NPDR",
+      "isReferable": false
+    },
+    "rightEye": {
+      "filename": "right_eye_sample.png",
+      "qualityGate": "PASS",
+      "sharpness": 31.2,
+      "predictedGrade": 3,
+      "predictedClass": "Severe NPDR",
+      "isReferable": true
+    },
+    "triageUrgency": "URGENT",
+    "worstEyeGrade": 3
+  }
+}
