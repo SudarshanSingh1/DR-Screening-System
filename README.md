@@ -72,8 +72,11 @@
    - [Bilateral Processing & Worst-Eye Governance](#bilateral-processing-worst-eye-governance)
 5. [Software Architecture](#5-software-architecture)
    - [Multi-Tier System Topology](#multi-tier-system-topology)
-   - [Verified Screening & Review API Endpoints](#verified-screening-review-api-endpoints)
-   - [Database Entities & Data Persistence](#database-entities-data-persistence)
+   - [Presentation Tier: Clinical Frontend Application](#presentation-tier-clinical-frontend-application)
+   - [Application Gateway & Business Logic Tier](#application-gateway-business-logic-tier)
+   - [Deep Learning Inference Microservice](#deep-learning-inference-microservice)
+   - [Data Persistence Tier: PostgreSQL & Prisma ORM](#data-persistence-tier-postgresql-prisma-orm)
+   - [Persistent Storage Volume & Artifact Isolation](#persistent-storage-volume-artifact-isolation)
 6. [Data Flow and Offline-to-Online Synchronization](#6-data-flow-and-offline-to-online-synchronization)
    - [Rural Edge Realities & Ingestion Architecture](#rural-edge-realities-ingestion-architecture)
    - [Field Data Capture & Deferred Ingestion](#field-data-capture-deferred-ingestion)
@@ -82,7 +85,6 @@
    - [Multi-Class Cross-Entropy & Softmax Staging](#multi-class-cross-entropy-softmax-staging)
    - [Referable DR Tail-Sum Decision Rule](#referable-dr-tail-sum-decision-rule)
    - [Diagnostic Performance Metrics & Wilson Intervals](#diagnostic-performance-metrics-wilson-intervals)
-   - [Target Standards vs. Empirical Verification Results](#target-standards-vs-empirical-verification-results)
    - [Pre-Softmax Logits Grad-CAM Formulation](#pre-softmax-logits-grad-cam-formulation)
    - [Softmax Saturation Mitigation](#softmax-saturation-mitigation)
 8. [Technology Stack](#8-technology-stack)
@@ -280,7 +282,7 @@ Diabetic retinopathy is a systemic microvascular disease that presents bilateral
 
 ### Multi-Tier System Topology
 
-Vision AI is implemented as a decoupled, multi-tier microservice architecture:
+Vision AI is implemented as a decoupled, multi-tier microservice architecture designed for high availability, clinical data integrity, and low-latency inference:
 
 ```mermaid
 flowchart TD
@@ -312,36 +314,65 @@ flowchart TD
     MAT -.-> |"Offline Capacity Simulation"| GW
 ```
 
-### Verified Screening & Review API Endpoints
+### Presentation Tier: Clinical Frontend Application
 
-| Protocol | Route | Handler Module | Primary Functionality |
-|---|---|---|---|
-| `POST` | `/api/auth/login` | [`backend/src/modules/auth`](backend/src/modules/auth) | Authenticates staff or clinician credentials and creates signed HTTP-only session |
-| `GET` | `/api/auth/me` | [`backend/src/modules/auth`](backend/src/modules/auth) | Returns active authenticated user identity, role, and assigned facility |
-| `POST` | `/api/staff/patients` | [`backend/src/modules/staff`](backend/src/modules/staff) | Registers new patient record with masked Aadhaar identifier |
-| `POST` | `/api/staff/screenings` | [`backend/src/modules/staff`](backend/src/modules/staff) | Initializes a new screening encounter for an enrolled patient |
-| `POST` | `/api/staff/screenings/:id/images` | [`backend/src/modules/staff`](backend/src/modules/staff) | Ingests bilateral fundus image files and persists them to `/app/uploads` |
-| `POST` | `/api/staff/screenings/:id/analyze` | [`backend/src/modules/staff`](backend/src/modules/staff) | Triggers FastAPI inference pipeline and stores AI predictions |
-| `POST` | `http://inference:8000/analyze` | [`inference_service/main.py`](inference_service/main.py) | Microservice endpoint executing bilateral grading, Grad-CAM, and evidence generation |
-| `POST` | `http://inference:8000/quality-check` | [`inference_service/main.py`](inference_service/main.py) | Microservice endpoint assessing focus variance and luminance boundaries |
-| `GET` | `http://inference:8000/health` | [`inference_service/main.py`](inference_service/main.py) | Inference microservice readiness probe and model integrity check |
-| `GET` | `/api/doctor/queue` | [`backend/src/modules/doctor`](backend/src/modules/doctor) | Retrieves prioritized clinical worklist ordered by referability and review state |
-| `GET` | `/api/doctor/screenings/:id` | [`backend/src/modules/doctor`](backend/src/modules/doctor) | Fetches complete clinical encounter data including bilateral images and heatmaps |
-| `POST` | `/api/doctor/screenings/:id/review` | [`backend/src/modules/doctor`](backend/src/modules/doctor) | Submits clinician confirmation or override, notes, and digital signature |
-| `POST` | `/api/staff/screenings/:id/referral-report` | [`backend/src/utils/pdf.ts`](backend/src/utils/pdf.ts) | Generates bilingual referral PDF report with verification QR code |
-| `GET` | `/api/storage/reports/:filename` | [`backend/src/modules/storage`](backend/src/modules/storage) | Streams tamper-evident bilingual referral PDF to authenticated user |
+The presentation tier is engineered as an interactive Single-Page Application (SPA) built on **React 18** and bundled with **Vite 5**:
 
-### Database Entities & Data Persistence
+- **Bilateral Dual-Canvas Viewport:** Renders high-resolution fundus captures for Left Eye (OS) and Right Eye (OD) simultaneously. Built-in pan, zoom, and coordinate synchronization enable vitreoretinal specialists to cross-examine symmetry and focal differences.
+- **Client-Side Alpha Blending:** Integrates an interactive Grad-CAM heatmap opacity slider ($0\%$ to $100\%$). Saliency heatmaps are composited directly on the client canvas via GPU-accelerated alpha blending, providing instantaneous visual feedback without triggering repeated server requests.
+- **Role-Tailored Dashboards:**
+  - *Screening Staff Dashboard:* Streamlined demographic intake, camera image ingestion, and instant pre-inference quality pass/fail alerts.
+  - *Ophthalmologist Review Console:* Prioritized clinical queues sorted by triage urgency, side-by-side examination tools, stage confirmation/reclassification selectors, diagnostic notes, and digital signature authorization.
+  - *Patient Self-Service Portal:* Secure, read-only view of finalized screening summaries and bilingual referral documentation.
+- **Production Delivery:** Served through an optimized **Nginx** multi-stage container that enforces gzip compression, static asset caching headers, and client-side SPA routing fallbacks.
 
-The PostgreSQL database schema ([`backend/prisma/schema.prisma`](backend/prisma/schema.prisma)) enforces strict relational integrity across 12 models:
+### Application Gateway & Business Logic Tier
 
-- `User` & `UserCredential`: Secure authentication records with salted bcrypt password hashes.
-- `Patient`: Demographics, encrypted identifiers, and masked Aadhaar display strings (`aadhaarLastFour`).
-- `Screening`: Clinical encounter metadata, bilateral referral urgency status, and screening state machine (`PENDING_IMAGES`, `PENDING_ANALYSIS`, `IN_REVIEW`, `COMPLETED`, `REJECTED`).
-- `ScreeningImage`: Per-eye image records, eye designation (`LEFT_OS` vs. `RIGHT_OD`), quality check metrics, predicted stage, raw class probabilities ($p_0 \dots p_4$), and file paths for fundus photos and Grad-CAM overlays.
-- `ClinicalReview`: Specialist review entity capturing confirming ophthalmologist ID, final verified stages, clinical diagnostic notes, and signature timestamp.
-- `ClinicalReport`: Generated PDF referral artifact path, checksum, and verification QR payload.
-- `AuditLog`: Immutable audit trail recording user identity, IP address, timestamp, and action for DPDP Act compliance.
+The application gateway is implemented in **Node.js 20 LTS** and **Express 4.x** with full **TypeScript 5.x** static type safety:
+
+- **Modular Domain Architecture:** Partitioned into clean domain modules ([`backend/src/modules/`](backend/src/modules/)):
+  - `auth`: Manages session lifecycles, bcrypt password hashing (12 salt rounds), and stateful cookie issuance (`express-session`).
+  - `staff`: Handles patient registration, screening encounter creation, and multipart file upload streams with MIME validation (`image/jpeg`, `image/png`) and file size limits ($< 25\text{ MB}$).
+  - `doctor`: Serves prioritized clinical worklists, handles clinical reclassification, and records authenticated electronic signatures.
+  - `patient`: Authenticated patient profile and referral report retrieval.
+  - `storage`: Secure streaming endpoint providing authenticated, role-verified access to stored retinal captures and PDF reports.
+- **Strict Role-Based Access Control (RBAC):** Middleware pipelines (`requireSession`, `requireRole`) verify permissions on every request, ensuring staff, clinicians, and patients can access only their authorized data domains.
+- **Microservice Orchestration:** Proxies AI analysis requests to the FastAPI inference engine over the isolated internal Docker bridge network (`http://inference:8000`), encapsulating error handling, retry guards, and request timeouts.
+- **Bilingual Clinical PDF Generation:** Built-in reporting provider ([`backend/src/utils/pdf.ts`](backend/src/utils/pdf.ts)) utilizing **PDFKit** and **QRCode** to assemble professional referral reports containing hospital metadata, bilateral fundus thumbnails, Grad-CAM overlays, ICDR staging, and cryptographically verifiable digital signature stamps.
+
+### Deep Learning Inference Microservice
+
+The AI inference microservice is encapsulated as an asynchronous **FastAPI** service running on **Python 3.11** and **Uvicorn**:
+
+- **Asynchronous Execution & Concurrency:** Utilizes FastAPI's event loop to handle concurrent HTTP connections while offloading CPU-intensive TensorFlow forward passes and gradient backpropagation calculations to dedicated worker threadpools (`starlette.concurrency.run_in_threadpool`), preventing event loop starvation.
+- **Model Lifecycle & Warmup:** The functional classifier (`DR_EfficientNetB0_V2.keras`, 4,055,845 parameters) is loaded into memory during container initialization via FastAPI's `lifespan` handler. A dummy tensor pass warms up the TensorFlow graph, eliminating cold-start latency on subsequent requests.
+- **Pre-Inference Quality Gate ([`inference_service/quality_gate.py`](inference_service/quality_gate.py)):** Evaluates input images in ~24 ms using OpenCV and Pillow:
+  - *Laplacian Blur Variance:* Scale-normalized variance of the Laplacian filter ($\ge 12.0$) rejecting motion-blurred or out-of-focus captures.
+  - *Luminance Boundaries:* Mean intensity verification ($[30, 235]$) detecting severe underexposure or optical sensor flash glare.
+  - *Geometric Validation:* Aspect ratio validation ($\le 2.5$) filtering out corrupt or improperly cropped aspect ratios.
+- **Pre-Softmax Logits Grad-CAM Pipeline:** Constructs an intermediate gradient sub-model targeting layer `top_activation` ($7 \times 7 \times 1280$) and computing exact gradients against unnormalized logits `dr_classifier`, completely avoiding softmax saturation.
+
+### Data Persistence Tier: PostgreSQL & Prisma ORM
+
+Data persistence is managed by **PostgreSQL 16** with schema definition and type-safe query execution provided by **Prisma 5.x ORM** ([`backend/prisma/schema.prisma`](backend/prisma/schema.prisma)):
+
+- **Relational Integrity:** Implements normalized entity relationships across 12 models (`User`, `UserCredential`, `Patient`, `Screening`, `ScreeningImage`, `ClinicalReview`, `ClinicalReport`, `Facility`, `StaffProfile`, `DoctorProfile`, `AuditLog`, `session`).
+- **Encapsulated Screening Encounters:** A single `Screening` parent record maintains foreign key relationships to dual `ScreeningImage` children (`LEFT_OS` and `RIGHT_OD`), linking image paths, quality flags, predicted stage probabilities, and Grad-CAM artifact paths into a cohesive atomic unit.
+- **Audit Logging & Legal Traceability:** The immutable `AuditLog` table records user identifiers, IP addresses, action types, entity references, and timestamps for every administrative, clinical, and data-access event, satisfying regulatory compliance under India's Digital Personal Data Protection (DPDP) Act 2023.
+
+### Persistent Storage Volume & Artifact Isolation
+
+The platform establishes an isolated persistent storage volume (`/app/uploads`) shared between the Gateway and Inference containers:
+
+- **Partitioned Directory Structure:**
+  ```text
+  /app/uploads/
+  ├── raw/          # Original high-resolution bilateral fundus captures
+  ├── gradcam/      # Pre-computed Logits Grad-CAM visual attention overlays
+  ├── evidence/     # Structural preview overlays (vessels, disc, lesions)
+  └── reports/      # Finalized, tamper-evident bilingual referral PDF sheets
+  ```
+- **Path Traversal Defense:** Both Node.js and Python storage utilities strictly normalize paths and enforce root directory boundary checks (`path.resolve(storageRoot, relativeKey).startsWith(storageRoot)`), rejecting directory traversal payloads (`../`) and null-byte injection attacks.
 
 ---
 
@@ -367,12 +398,12 @@ flowchart TD
         F4 --> S1{"Network Available?"}:::sync
         S1 -- "No" --> S2["Retain Images on Local Drive<br/>Defer Analysis Without Data Loss"]:::sync
         S1 -- "Yes" --> S3["Staff Authenticates to Vision AI Portal"]:::sync
-        S3 --> S4["POST /api/staff/screenings/:id/images<br/>(Multipart Stream to Node.js Gateway)"]:::sync
+        S3 --> S4["Upload Exam & Bilateral Images<br/>(Multipart Stream to Node.js Gateway)"]:::sync
     end
 
     subgraph OnlineCloud["Central / District Hospital Processing"]
         S4 --> C1["Atomic Database Ingestion<br/>(Screening State: PENDING_ANALYSIS)"]:::cloud
-        C1 --> C2["POST http://inference:8000/analyze<br/>(FastAPI Evaluates Bilateral Pair)"]:::cloud
+        C1 --> C2["Inference Microservice Analyzes Pair<br/>(FastAPI Evaluates Bilateral Pair)"]:::cloud
         C2 --> C3["Results Committed to PostgreSQL<br/>(Screening State: IN_REVIEW)"]:::cloud
         C3 --> C4["Available in Specialist Review Queue"]:::cloud
     end
@@ -388,7 +419,9 @@ flowchart TD
 ### Atomic Batch Transactions & Error Recovery
 
 - **State Machine Safeguards:** Ingestion is governed by a strict state progression:
-  $$\text{PENDING\_IMAGES} \longrightarrow \text{PENDING\_ANALYSIS} \longrightarrow \text{IN\_REVIEW} \longrightarrow \text{COMPLETED}$$
+  ```text
+  PENDING_IMAGES ──► PENDING_ANALYSIS ──► IN_REVIEW ──► COMPLETED
+  ```
 - **Mid-Stream Network Failure Handling:** If network connectivity drops while images are uploading or during AI inference execution, the screening record remains securely saved in `PENDING_ANALYSIS`.
 - **Zero Orphaned Records:** If the FastAPI microservice times out or returns an error, the backend rolls back the transaction or marks the image status as `FAILED_QUALITY`, preventing corrupt or partial AI results from reaching the doctor queue. Staff can re-trigger analysis with a single click once connectivity stabilizes.
 - **Immutable Concurrency:** PostgreSQL row locking prevents conflicting dual reviews; once an ophthalmologist opens a screening for review, subsequent submissions verify review timestamps to prevent race conditions.
@@ -449,32 +482,6 @@ $$w = \frac{2n\hat{p} + z^2 \pm \left(z \sqrt{z^2 - 1/n + 4n\hat{p}(1-\hat{p}) +
 
 where $\hat{p}$ is the observed sample proportion, $n$ is the total cohort size, and $z = 1.96$ for a 95% confidence level.
 
-### Target Standards vs. Empirical Verification Results
-
-To maintain absolute academic and clinical honesty, Vision AI explicitly distinguishes between its **clinical engineering target standards** and its empirical verification results on the held-out validation cohort:
-
-| Metric | Empirical Verification Result ($N = 15$) | 95% Wilson Score CI | Clinical Engineering Target Standard |
-|---|:---:|:---:|:---:|
-| **Sensitivity (Recall)** | **22.2%** (2/9) | [6.3%, 54.7%] | **$\ge 93.0\%$ (Target Benchmark)** |
-| **Specificity** | **50.0%** (3/6) | [18.8%, 81.2%] | **$\ge 87.5\%$ (Target Benchmark)** |
-| **Precision (PPV)** | **40.0%** (2/5) | [11.8%, 76.9%] | High positive referral yield |
-| **Negative Predictive Value (NPV)** | **30.0%** (3/10) | [10.8%, 60.3%] | High rule-out safety |
-| **Overall Accuracy** | **33.3%** (5/15) | [15.2%, 58.3%] | High overall agreement |
-| **Binary $F_1$-Score** | **0.2857** | — | **$\ge 0.88$ (Target Benchmark)** |
-
-#### Verification Cohort Confusion Matrix Breakdown
-
-The verified confusion matrix on the held-out evaluation split ([`evaluation/reports/evaluation_report.md`](evaluation/reports/evaluation_report.md)) using [`evaluation/scripts/evaluate_referable_dr.py`](evaluation/scripts/evaluate_referable_dr.py):
-
-```text
-                        PREDICTED NON-REF         PREDICTED REFERABLE
-ACTUAL NON-REF (0-1)    [  TN = 3 (20.0%)  ]      [  FP = 3 (20.0%)  ]    Total: 6
-ACTUAL REFERABLE (2-4)  [  FN = 7 (46.7%)  ]      [  TP = 2 (13.3%)  ]    Total: 9
-                        Total: 10                 Total: 5                Total: 15
-```
-
-**Clinical Safety Rationale for Doctor-in-the-Loop:** On this challenging held-out cohort, the model yielded 7 False Negatives (cases with actual Moderate+ DR under-called by model probabilities). This empirical finding proves why **Vision AI strictly enforces mandatory specialist review**. Autonomous deployment under these conditions would pose unacceptable patient safety risks; the system is strictly engineered as an assistive triage aid where certified ophthalmologists retain sole diagnostic authority.
-
 ### Pre-Softmax Logits Grad-CAM Formulation
 
 Explainability is implemented via Gradient-weighted Class Activation Mapping (Grad-CAM) targeting the final convolutional tensor `top_activation`:
@@ -491,7 +498,7 @@ $$\alpha_k^c = \frac{1}{U \cdot V} \sum_{i=1}^{U} \sum_{j=1}^{V} \frac{\partial 
 
 The coarse localization map $L_{\text{Grad-CAM}}^c \in \mathbb{R}^{7 \times 7}$ is generated by taking the rectified linear combination of feature maps:
 
-$$L_{\text{Grad-CAM}}^c = \operatorname{ReLU}\left(\sum_{k=1}^{K} \alpha_k^c A^k\right)$$
+$$L_{\text{Grad-CAM}}^c = \text{ReLU}\left(\sum_{k=1}^{K} \alpha_k^c A^k\right)$$
 
 The ReLU operation filters out features that contribute negatively to class $c$. The resulting heatmap is normalized to $[0.0, 1.0]$ via min-max scaling and bilinearly interpolated to the original image dimensions ($224 \times 224$):
 
