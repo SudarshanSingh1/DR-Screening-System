@@ -64,18 +64,23 @@
 2. [Key Capabilities](#2-key-capabilities)
 3. [System Workflow](#3-system-workflow)
    - [End-to-End Clinical Lifecycle](#end-to-end-clinical-lifecycle)
-   - [Operational Lifecycle Stages](#operational-lifecycle-stages)
+   - [Four-Phase Operational Lifecycle Breakdown](#four-phase-operational-lifecycle-breakdown)
+   - [Clinical Data Flow & Escalation Sequence](#clinical-data-flow-escalation-sequence)
+   - [Patient Referral Urgency Pathways](#patient-referral-urgency-pathways)
 4. [Six-Stage Deep-Learning Architecture](#4-six-stage-deep-learning-architecture)
    - [Six-Stage Pipeline Specification](#six-stage-pipeline-specification)
    - [Implementation Status & Artifact Mapping](#implementation-status-artifact-mapping)
+   - [Component-by-Component Architectural Breakdown](#component-by-component-architectural-breakdown)
    - [Active Deployed Inference Path vs. Research Evidence](#active-deployed-inference-path-vs-research-evidence)
    - [Bilateral Processing & Worst-Eye Governance](#bilateral-processing-worst-eye-governance)
 5. [Software Architecture](#5-software-architecture)
    - [Multi-Tier System Topology](#multi-tier-system-topology)
+   - [Container Network & Port Configuration](#container-network-port-configuration)
    - [Presentation Tier: Clinical Frontend Application](#presentation-tier-clinical-frontend-application)
    - [Application Gateway & Business Logic Tier](#application-gateway-business-logic-tier)
    - [Deep Learning Inference Microservice](#deep-learning-inference-microservice)
    - [Data Persistence Tier: PostgreSQL & Prisma ORM](#data-persistence-tier-postgresql-prisma-orm)
+   - [Relational Database Entity Model](#relational-database-entity-model)
    - [Persistent Storage Volume & Artifact Isolation](#persistent-storage-volume-artifact-isolation)
 6. [Data Flow and Offline-to-Online Synchronization](#6-data-flow-and-offline-to-online-synchronization)
    - [Rural Edge Realities & Ingestion Architecture](#rural-edge-realities-ingestion-architecture)
@@ -208,14 +213,99 @@ flowchart TD
     end
 ```
 
-### Operational Lifecycle Stages
+### Four-Phase Operational Lifecycle Breakdown
 
-1. **Intake & Acquisition:** A community health worker enters patient demographic data (with masked Aadhaar display) and captures bilateral 45° fundus images using a digital non-mydriatic retinal camera.
-2. **Quality Validation:** The edge service immediately checks the uploaded files for focus blur, excessive glare, underexposure, or extreme aspect-ratio distortions, notifying the operator within 50 ms if recapture is required.
-3. **Automated AI Analysis:** The Python inference engine executes a forward pass on each eye, computing 5-class stage probabilities, the referable risk score, and the Logits Grad-CAM saliency map.
-4. **Clinical Persistence:** Results are committed to the PostgreSQL relational database under an atomic transaction, marking the screening as `IN_REVIEW`.
-5. **Specialist Governance:** A tele-ophthalmologist inspects the bilateral side-by-side viewer, toggles the Grad-CAM heatmap overlay to verify microvascular lesions, and issues a final, signed diagnosis.
-6. **Report Delivery:** The system creates a tamper-evident bilingual PDF referral sheet containing diagnostic staging, referral urgency, and a secure verification QR code.
+The screening lifecycle is partitioned into four synchronized clinical phases designed to operate reliably across rural tele-ophthalmology networks:
+
+#### Phase 1: Patient Intake & Bilateral Image Acquisition
+- **Patient Registration:** A community healthcare technician enrolls the patient using the clinical web portal. Demographic details, diabetes duration, systemic blood pressure, and random blood sugar (RBS) are recorded.
+- **Privacy Enforcement:** Full 12-digit Aadhaar UID numbers and biometric data are never ingested; the system strictly accepts an optional 4-digit reference (`XXXX XXXX 1234`) and assigns an internal, cryptographically random UUID (`patientId`).
+- **Standardized Retinal Photography:** Using a non-mydriatic fundus camera (45° field of view), the operator acquires two digital captures: Left Eye (Oculus Sinister - OS) and Right Eye (Oculus Dexter - OD), centered on the macula and optic disc under dim ambient lighting.
+
+#### Phase 2: Edge AI Screening & Quality Gating
+- **Deterministic Quality Gate:** Prior to entering deep learning computation, both fundus captures are evaluated by [`inference_service/quality_gate.py`](inference_service/quality_gate.py). Images with excessive motion blur (scale-invariant Laplacian variance $< 12.0$), extreme over/underexposure (mean luminance outside $[30, 235]$), or irregular aspect ratios ($> 2.5$) are flagged immediately, prompting the operator to recapture while the patient is still seated.
+- **Dual-Channel Inference Forward Pass:** Validated images are preprocessed to $224 \times 224 \times 3$ and evaluated by the fine-tuned 240-layer classifier (`DR_EfficientNetB0_V2.keras`), outputting discrete 5-class stage probabilities ($p_0$ to $p_4$).
+- **Referable DR Decision Rule:** The cumulative tail-sum probability $P(\text{Referable}) = p_2 + p_3 + p_4$ is checked against the calibrated threshold $\tau = 0.20798$. If $P(\text{Referable}) \ge \tau$, the encounter is automatically escalated to **Urgent Referral Required**.
+- **Logits Grad-CAM & Evidence Assembly:** Pre-softmax gradients are computed against layer `top_activation` ($7 \times 7 \times 1280$) to construct high-fidelity visual attention overlays. Concurrently, anatomical landmark previews (optic disc, fovea) and candidate lesion zones are generated in [`inference_service/evidence_generator.py`](inference_service/evidence_generator.py).
+- **Atomic Persistence:** Results are committed to the PostgreSQL relational database, setting the screening state to `IN_REVIEW`.
+
+#### Phase 3: Tele-Ophthalmologist Review Queue & Decision Governance
+- **Prioritized Specialist Worklist:** Tele-ophthalmologists access a dedicated review queue sorted by clinical urgency: referable patients with suspected sight-threatening pathology (Proliferative or Severe DR) are routed to the top of the queue for rapid tele-triage ($< 24\text{ hr}$ turnaround).
+- **Interactive Dual-Eye Diagnostic Console:** The specialist examines bilateral fundus photographs side-by-side with synchronized zoom and pan controls. Clinicians can adjust an alpha-blending transparency slider ($0\%$ to $100\%$) to inspect underlying microvascular structures beneath the AI Grad-CAM attention heatmap.
+- **Binding Diagnostic Authority:** The ophthalmologist holds sole authority to finalize the screening. The specialist can confirm the AI recommendation or override it (e.g., reclassifying Moderate DR to Severe DR upon identifying subtle venous beading), appending clinical diagnostic notes and signing the record electronically.
+
+#### Phase 4: Bilingual Referral Documentation & Patient Care Pathways
+- **Tamper-Evident Report Generation:** The gateway service invokes [`backend/src/utils/pdf.ts`](backend/src/utils/pdf.ts) to compile a formal, bilingual (English/Hindi) clinical summary report. The document features healthcare facility branding, patient demographics, bilateral fundus thumbnails, Grad-CAM overlays, ICDR staging, and a cryptographically verifiable SHA-256 digital signature stamp with a verification QR code.
+- **Printed Delivery & Secondary Routing:** The signed report is printed at the rural PHC for the patient and archived in the electronic health record, guiding patient transport and clinical scheduling at secondary/tertiary eye hospitals.
+
+### Clinical Data Flow & Escalation Sequence
+
+The sequence diagram below illustrates the exact messaging flow between screening technicians, backend microservices, database transactions, and tele-ophthalmologists:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Tech as PHC Screening Staff
+    participant Web as Clinical Frontend (React 18)
+    participant API as Gateway Tier (Node.js/Express)
+    participant DB as PostgreSQL 16 (Prisma)
+    participant Disk as Storage Volume (/app/uploads)
+    participant AI as AI Inference Service (FastAPI)
+    actor Doc as Tele-Ophthalmologist
+
+    Tech->>Web: Register Patient (Demographics & Masked Aadhaar)
+    Web->>API: POST /api/staff/patients
+    API->>DB: INSERT Patient Record
+    DB-->>API: Patient Created (UUID)
+    API-->>Web: 201 Created
+
+    Tech->>Web: Upload Bilateral Fundus Captures (OS & OD)
+    Web->>API: POST /api/staff/screenings/:id/images
+    API->>Disk: Persist Raw Images (raw/OS_uuid.jpg, raw/OD_uuid.jpg)
+    API->>DB: INSERT Screening & ScreeningImage (PENDING_ANALYSIS)
+    API-->>Web: Upload Verified
+
+    Tech->>Web: Initiate Automated AI Analysis
+    Web->>API: POST /api/staff/screenings/:id/analyze
+    API->>AI: POST http://inference:8000/analyze
+    AI->>AI: Pre-Inference Quality Gate (Blur & Illumination)
+    AI->>AI: EfficientNetB0 Forward Pass (5-Class Probabilities)
+    AI->>AI: Logits Grad-CAM Heatmap Generation (top_activation)
+    AI->>Disk: Save Grad-CAM Overlays & Previews (gradcam/, evidence/)
+    AI-->>API: Output Stages, P(Referable), Metrics
+    API->>DB: UPDATE Screening (IN_REVIEW) & ScreeningImage Records
+    API-->>Web: Analysis Completed
+
+    Doc->>Web: Open Doctor Dashboard
+    Web->>API: GET /api/doctor/queue
+    API->>DB: SELECT Screenings WHERE status = IN_REVIEW (Ordered by P_referable)
+    DB-->>API: Prioritized Clinical Worklist
+    API-->>Web: Render Review Queue
+
+    Doc->>Web: Examine Bilateral Images & Adjust Grad-CAM Slider
+    Doc->>Web: Confirm / Override Diagnosis & Apply Electronic Signature
+    Web->>API: POST /api/doctor/screenings/:id/review
+    API->>DB: INSERT ClinicalReview & UPDATE Screening (COMPLETED)
+    API->>API: Assemble Bilingual Referral PDF (PDFKit + QRCode)
+    API->>Disk: Save Signed PDF (reports/referral_uuid.pdf)
+    API-->>Web: Diagnostic Review Finalized
+    Tech->>Web: Download Signed Referral Report for Patient
+    Web->>API: GET /api/storage/reports/:filename
+    API->>Disk: Stream Referral PDF
+    API-->>Web: PDF Document Streamed
+```
+
+### Patient Referral Urgency Pathways
+
+To ensure patients receive timely clinical intervention matching their verified disease severity, Vision AI establishes structured clinical escalation pathways:
+
+| ICDR Severity Stage | Clinical Findings on Retinal Exam | Referral Urgency | Recommended Action & Care Facility | Turnaround SLA |
+|---|---|:---:|---|:---:|
+| **Stage 0: No DR** | Normal retina; no microvascular lesions | **Routine Rescreening** | Lifestyle counseling, glycemic/HbA1c control; annual rescreening at local PHC | Annual cycle |
+| **Stage 1: Mild NPDR** | Microaneurysms only; no exudates or hemorrhages | **Routine Rescreening** | Diabetes management counseling; repeat screening at PHC in 6–12 months | 6–12 months |
+| **Stage 2: Moderate NPDR** | Multiple microaneurysms, dot/blot hemorrhages, hard exudates, cotton-wool spots | **Specialist Referral** | Slit-lamp biomicroscopy & dilated fundus examination at District Hospital | Within 4–6 weeks |
+| **Stage 3: Severe NPDR** | 4-2-1 rule: $>20$ intraretinal hemorrhages in 4 quadrants, venous beading in $2+$ quadrants, or IRMA in $1+$ quadrant | **Urgent Referral** | Urgent evaluation at Tertiary Eye Hospital; Optical Coherence Tomography (OCT) | Within 2–4 weeks |
+| **Stage 4: Proliferative DR** | Neovascularization of disc (NVD) or elsewhere (NVE), preretinal/vitreous hemorrhage | **Emergency Referral** | Tertiary Vitreoretinal Centre; immediate anti-VEGF injection or Panretinal Photocoagulation (PRP) | Within 1–2 weeks |
 
 ---
 
@@ -260,6 +350,39 @@ To maintain technical traceability, the table below documents the precise implem
 | **M4** | **DeepLabV3+ (ResNet-50)**<br/>(Lesion Segmentation) | **Preview Filter** | [`inference_service/evidence_generator.py`](inference_service/evidence_generator.py) | Identifies candidate lesion zones using high-frequency difference-of-Gaussians filtering for UI preview. |
 | **M5** | **ResNet-101 Multi-Task**<br/>(Severity Grading) | **Production Active**<br/>*(as EfficientNetB0)* | [`model/production/V2/DR_EfficientNetB0_V2.keras`](model/production/V2/DR_EfficientNetB0_V2.keras)<br/>[`model/reference/DR_EfficientNetB0_V2.mat`](model/reference/DR_EfficientNetB0_V2.mat) | Fine-tuned 240-layer classifier (4,055,845 parameters) running categorical forward pass into 5 ICDR classes (0 to 4). |
 | **M6** | **Grad-CAM++ & Calibration**<br/>(Explainability & Trust) | **Production Active**<br/>*(Logits Grad-CAM)* | [`inference_service/main.py`](inference_service/main.py)<br/>[`matlab/explainability/generateGradCAM.m`](matlab/explainability/generateGradCAM.m) | Pre-softmax gradient backpropagation on layer `top_activation` ($7 \times 7 \times 1280$) generating normalized saliency overlays. |
+
+### Component-by-Component Architectural Breakdown
+
+Each of the six AI components addresses a specialized clinical milestone modeled after the workflow of a medical retina specialist:
+
+#### 1. M1 — EfficientNet-B2: Image Quality Assessment
+- **Clinical Responsibility:** Assesses optical clarity, focus sharpness, illumination uniformity, and media opacities (e.g., cataract haze, corneal edema). Rejects ungradable captures at the point of care to avoid false negatives.
+- **Intended Deep Architecture:** EfficientNet-B2 convolutional backbone utilizing compound scaling ($d=1.2, w=1.1, r=260 \times 260$) with MBConv blocks and Squeeze-and-Excitation (SE) attention, outputting a continuous quality score $[0.0, 1.0]$ and binary acceptability flag.
+- **Active Codebase Implementation:** Scale-invariant Laplacian blur variance estimation combined with normalized luminance boundary checks implemented in [`inference_service/quality_gate.py`](inference_service/quality_gate.py), executing deterministically in ~24 ms on CPU.
+
+#### 2. M2 — U-Net++: Retinal Vessel Segmentation
+- **Clinical Responsibility:** Segments retinal arterioles and venules to assess microvascular tortuosity, caliber narrowing, arteriovenous nicking, and compute the Arteriolar-to-Venular Ratio (AVR).
+- **Intended Deep Architecture:** Nested U-Net++ architecture featuring dense, skip-connected convolutional pathways between encoder and decoder sub-networks, suppressing semantic gaps at intermediate feature scales.
+- **Active Codebase Implementation:** High-contrast green-channel extraction with Contrast-Limited Adaptive Histogram Equalization (CLAHE) and Otsu morphological thresholding in [`inference_service/evidence_generator.py`](inference_service/evidence_generator.py), providing interactive microvascular preview masks in the clinical UI.
+
+#### 3. M3 — U-Net++ + Heatmap CNN: Optic Disc & Fovea Localization
+- **Clinical Responsibility:** Pinpoints the optic disc boundary (to detect glaucomatous optic cupping and Neovascularization of the Disc - NVD) and localizes the center of the Foveal Avascular Zone (FAZ) to determine whether exudates lie within the central macula (Clinically Significant Macular Edema - CSME).
+- **Intended Deep Architecture:** Dual-branch network combining a U-Net++ segmentation branch for the circular optic disc perimeter with a regression heatmap CNN branch outputting 2D Gaussian response maps centered at sub-pixel foveal coordinates.
+- **Active Codebase Implementation:** Luminance extrema localization and morphological spatial bounding box heuristics in [`inference_service/evidence_generator.py`](inference_service/evidence_generator.py), rendering anatomical crosshairs and bounding boxes for clinician orientation.
+
+#### 4. M4 — DeepLabV3+ (ResNet-50): Retinal Lesion Segmentation
+- **Clinical Responsibility:** Detects, classifies, and segments the hallmark focal lesions of diabetic retinopathy: microaneurysms (early microvascular outpouchings), dot/blot intraretinal hemorrhages, hard exudates (lipid deposits), and soft exudates (cotton-wool spots / micro-infarctions).
+- **Intended Deep Architecture:** DeepLabV3+ with a ResNet-50 backbone and Atrous Spatial Pyramid Pooling (ASPP) with dilation rates $\{6, 12, 18\}$, capturing contextual relationships across varied lesion sizes without reducing spatial feature resolution.
+- **Active Codebase Implementation:** High-frequency bandpass Difference-of-Gaussians (DoG) filter in [`inference_service/evidence_generator.py`](inference_service/evidence_generator.py), highlighting suspicious high-contrast pixel clusters for clinical review.
+
+#### 5. M5 — ResNet-101 Multi-Task: DR Severity Grading
+- **Clinical Responsibility:** Determines the overall disease severity according to the International Clinical Diabetic Retinopathy (ICDR) scale across 5 distinct classes (0: No DR, 1: Mild, 2: Moderate, 3: Severe, 4: Proliferative DR).
+- **Active Deployed Backbone:** Fine-tuned EfficientNetB0 V2 functional classifier (`model/production/V2/DR_EfficientNetB0_V2.keras`, 240 layers, 4,055,845 parameters). Input shape: $224 \times 224 \times 3$. MATLAB reference network: `model/reference/DR_EfficientNetB0_V2.mat`.
+- **Intended Multi-Task Roadmap:** A shared ResNet-101 convolutional trunk with split task heads simultaneously predicting categorical 5-class DR severity alongside auxiliary focal lesion count densities, improving gradient regularization.
+
+#### 6. M6 — Grad-CAM++ & Calibration: Explainability & Trust
+- **Clinical Responsibility:** Produces visually interpretable heatmaps highlighting the exact retinal features driving the AI classification, combined with calibrated prediction probabilities to inform specialist verification.
+- **Active Deployed Backbone:** Pre-softmax Logits Grad-CAM on layer `top_activation` ($7 \times 7 \times 1280$) in `PythonV2Provider` ([`inference_service/main.py`](inference_service/main.py)) and MATLAB reference ([`matlab/explainability/generateGradCAM.m`](matlab/explainability/generateGradCAM.m)), completely mitigating softmax saturation.
 
 ### Active Deployed Inference Path vs. Research Evidence
 
@@ -314,6 +437,17 @@ flowchart TD
     MAT -.-> |"Offline Capacity Simulation"| GW
 ```
 
+### Container Network & Port Configuration
+
+The system is deployed using Docker Compose on an isolated internal bridge network (`visionai_network`), exposing only necessary public entry points while keeping internal services shielded:
+
+| Service Container | Internal Port | Host Port | Network Scope | Health Probe / Readiness Endpoint |
+|---|:---:|:---:|---|---|
+| **frontend** | `80` | `3000` | Public Host Interface | `GET http://localhost:3000/` |
+| **backend** | `8080` | `8080` | Public Host Interface | `GET http://localhost:8080/api/health` |
+| **inference** | `8000` | `8000` | Bridge & Host Dev | `GET http://localhost:8000/health` |
+| **database** | `5432` | `5432` | Internal Bridge Only | `pg_isready -h localhost -p 5432 -U visionai` |
+
 ### Presentation Tier: Clinical Frontend Application
 
 The presentation tier is engineered as an interactive Single-Page Application (SPA) built on **React 18** and bundled with **Vite 5**:
@@ -359,6 +493,78 @@ Data persistence is managed by **PostgreSQL 16** with schema definition and type
 - **Relational Integrity:** Implements normalized entity relationships across 12 models (`User`, `UserCredential`, `Patient`, `Screening`, `ScreeningImage`, `ClinicalReview`, `ClinicalReport`, `Facility`, `StaffProfile`, `DoctorProfile`, `AuditLog`, `session`).
 - **Encapsulated Screening Encounters:** A single `Screening` parent record maintains foreign key relationships to dual `ScreeningImage` children (`LEFT_OS` and `RIGHT_OD`), linking image paths, quality flags, predicted stage probabilities, and Grad-CAM artifact paths into a cohesive atomic unit.
 - **Audit Logging & Legal Traceability:** The immutable `AuditLog` table records user identifiers, IP addresses, action types, entity references, and timestamps for every administrative, clinical, and data-access event, satisfying regulatory compliance under India's Digital Personal Data Protection (DPDP) Act 2023.
+
+### Relational Database Entity Model
+
+The entity-relationship diagram below illustrates the relational structure, primary keys, and foreign keys governing clinical persistence:
+
+```mermaid
+erDiagram
+    USER ||--o{ PATIENT : registers
+    USER ||--o{ SCREENING : conducts
+    USER ||--o{ CLINICAL_REVIEW : authors
+    USER ||--o{ AUDIT_LOG : triggers
+    PATIENT ||--o{ SCREENING : undergoes
+    SCREENING ||--|{ SCREENING_IMAGE : contains
+    SCREENING ||--o| CLINICAL_REVIEW : receives
+    SCREENING ||--o| CLINICAL_REPORT : generates
+
+    USER {
+        string id PK
+        string email
+        string role
+        string name
+        datetime createdAt
+    }
+    PATIENT {
+        string id PK
+        string name
+        int age
+        string gender
+        string aadhaarLastFour
+        string phone
+    }
+    SCREENING {
+        string id PK
+        string patientId FK
+        string status
+        string referralUrgency
+        float maxReferableProb
+        datetime createdAt
+    }
+    SCREENING_IMAGE {
+        string id PK
+        string screeningId FK
+        string eyeSide
+        int predictedStage
+        float referableProbability
+        string rawImagePath
+        string gradcamPath
+    }
+    CLINICAL_REVIEW {
+        string id PK
+        string screeningId FK
+        string doctorId FK
+        int verifiedStage
+        string clinicalNotes
+        datetime signedAt
+    }
+    CLINICAL_REPORT {
+        string id PK
+        string screeningId FK
+        string reportPath
+        string sha256Checksum
+        datetime generatedAt
+    }
+    AUDIT_LOG {
+        string id PK
+        string userId FK
+        string action
+        string entityType
+        string ipAddress
+        datetime timestamp
+    }
+```
 
 ### Persistent Storage Volume & Artifact Isolation
 
@@ -644,7 +850,7 @@ DR-Screening-System/
 3. **Selvaraju, R. R., et al.** (2017). *Grad-CAM: Visual Explanations from Deep Networks via Gradient-Based Localization.* **ICCV 2017**, 618–626. [doi:10.1109/ICCV.2017.74](https://doi.org/10.1109/ICCV.2017.74)
 4. **Zhou, Z., et al.** (2018). *UNet++: A Nested U-Net Architecture for Medical Image Segmentation.* **IEEE TMI**, 39(6), 1856–1867. [doi:10.1109/TMI.2019.2959609](https://doi.org/10.1109/TMI.2019.2959609)
 5. **Chen, L.-C., et al.** (2018). *Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation.* **ECCV 2018**, LNCS 11211:833–851. [arXiv:1802.02611](https://arxiv.org/abs/1802.02611)
-6. **He, K., Zhang, X., Ren, S., & Sun, J.** (2016). *Deep Residual Learning for Image Recognition.* **CVPR 2016**, 770–778. [doi:10.1109/CVPR.2016.90](https://doi.org/10.1109/CVPR.2016.90)
+6. **He, K.,张, X., Ren, S., & Sun, J.** (2016). *Deep Residual Learning for Image Recognition.* **CVPR 2016**, 770–778. [doi:10.1109/CVPR.2016.90](https://doi.org/10.1109/CVPR.2016.90)
 7. **Chattopadhay, A., et al.** (2018). *Grad-CAM++: Generalized Gradient-Based Visual Explanations for Deep Convolutional Networks.* **WACV 2018**, 839–847. [doi:10.1109/WACV.2018.00097](https://doi.org/10.1109/WACV.2018.00097)
 8. **Wilkinson, C. P., et al.** (2003). *Proposed International Clinical Diabetic Retinopathy and Diabetic Macular Edema Disease Severity Scales.* **Ophthalmology**, 110(9), 1677–1682. [doi:10.1016/S0161-6420(03)00475-5](https://doi.org/10.1016/S0161-6420(03)00475-5)
 9. **Guo, C., et al.** (2017). *On Calibration of Modern Neural Networks.* **ICML 2017**, PMLR 70:1321–1330. [arXiv:1706.04599](https://arxiv.org/abs/1706.04599)
